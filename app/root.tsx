@@ -25,7 +25,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -46,15 +46,15 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = "出错了";
+  let details = "发生了意外错误。";
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : "错误";
     details =
       error.status === 404
-        ? "The requested page could not be found."
+        ? "找不到请求的页面。"
         : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
@@ -62,11 +62,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+    <main style={{ padding: "4rem 1rem", maxWidth: "640px", margin: "0 auto" }}>
+      <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "1rem" }}>{message}</h1>
+      <p style={{ color: "#666", marginBottom: "1rem" }}>{details}</p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
+        <pre style={{ width: "100%", padding: "1rem", overflow: "auto", background: "#f5f5f5", borderRadius: "8px" }}>
           <code>{stack}</code>
         </pre>
       )}

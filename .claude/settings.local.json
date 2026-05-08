@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npx shadcn@latest init -d -y)",
+      "Bash(mysql *)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Bash(npx prisma *)",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(yarn add *)",
+      "Bash(npx react-router *)",
+      "Bash(curl -s http://localhost:5173/dashboard)",
+      "Bash(pkill -f \"react-router dev\")",
+      "Bash(curl -s http://localhost:5178/dashboard)",
+      "Bash(curl -sL http://localhost:5178/dashboard)",
+      "Bash(pkill -f \"react-router\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(npx shadcn@latest *)",
+      "Bash(node *)",
+      "WebSearch",
+      "WebFetch(domain:reshaped.so)",
+      "Bash(npx tsc *)",
+      "Bash(yarn remove *)",
+      "Bash(npx shadcn *)",
+      "Bash(yarn dev *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5179/login)",
+      "Bash(yarn build *)"
+    ]
+  }
+}

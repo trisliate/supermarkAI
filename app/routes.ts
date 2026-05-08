@@ -1,3 +1,27 @@
-import { type RouteConfig, index } from "@react-router/dev/routes";
+import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
 
-export default [index("routes/home.tsx")] satisfies RouteConfig;
+export default [
+  index("routes/home.tsx"),
+  route("login", "routes/login.tsx"),
+  route("logout", "routes/logout.tsx"),
+  route("dashboard", "routes/dashboard.tsx"),
+  route("users", "routes/users.tsx"),
+  route("users/new", "routes/users.new.tsx"),
+  route("users/:id/edit", "routes/users.$id.edit.tsx"),
+  route("products", "routes/products.tsx"),
+  route("products/new", "routes/products.new.tsx"),
+  route("products/:id/edit", "routes/products.$id.edit.tsx"),
+  route("categories", "routes/categories.tsx"),
+  route("suppliers", "routes/suppliers.tsx"),
+  route("suppliers/new", "routes/suppliers.new.tsx"),
+  route("suppliers/:id/edit", "routes/suppliers.$id.edit.tsx"),
+  route("purchases", "routes/purchases.tsx"),
+  route("purchases/new", "routes/purchases.new.tsx"),
+  route("purchases/:id", "routes/purchases.$id.tsx"),
+  route("inventory", "routes/inventory.tsx"),
+  route("inventory/log", "routes/inventory.log.tsx"),
+  route("inventory/:id", "routes/inventory.$id.tsx"),
+  route("sales", "routes/sales.tsx"),
+  route("sales/new", "routes/sales.new.tsx"),
+  route("api/assistant", "routes/api.assistant.ts"),
+] satisfies RouteConfig;

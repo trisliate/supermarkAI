@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  admin             // 管理员/经理
+  purchaser         // 采购员
+  inventory_keeper  // 库存管理员
+  cashier           // 营业员
+}
+
+enum ProductStatus {
+  active
+  inactive
+}
+
+enum SupplierStatus {
+  active
+  inactive
+}
+
+enum PurchaseStatus {
+  pending    // 待审批
+  approved   // 已审批
+  received   // 已入库
+  cancelled  // 已取消
+}
+
+enum InventoryType {
+  IN   // 入库
+  OUT  // 出库
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+
+  purchaseOrders PurchaseOrder[]
+  saleOrders     SaleOrder[]
+  inventoryLogs  InventoryLog[]
+}
+
+model Category {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+
+  products Product[]
+}
+
+model Product {
+  id          Int           @id @default(autoincrement())
+  name        String
+  categoryId  Int
+  price       Decimal       @db.Decimal(10, 2)
+  unit        String        // 个、箱、瓶、袋等
+  description String?
+  status      ProductStatus @default(active)
+  createdAt   DateTime      @default(now())
+
+  category         Category          @relation(fields: [categoryId], references: [id])
+  inventory        Inventory?
+  purchaseItems    PurchaseOrderItem[]
+  saleItems        SaleOrderItem[]
+  inventoryLogs    InventoryLog[]
+}
+
+model Supplier {
+  id      Int            @id @default(autoincrement())
+  name    String
+  contact String         // 联系人
+  phone   String
+  address String?
+  status  SupplierStatus @default(active)
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id          Int            @id @default(autoincrement())
+  supplierId  Int
+  userId      Int            // 采购员
+  status      PurchaseStatus @default(pending)
+  totalAmount Decimal        @db.Decimal(10, 2) @default(0)
+  remark      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  supplier  Supplier           @relation(fields: [supplierId], references: [id])
+  user      User               @relation(fields: [userId], references: [id])
+  items     PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              Int     @id @default(autoincrement())
+  purchaseOrderId Int
+  productId       Int
+  quantity        Int
+  unitPrice       Decimal @db.Decimal(10, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+}
+
+model Inventory {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @unique
+  quantity    Int      @default(0)
+  lastUpdated DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model InventoryLog {
+  id        Int          @id @default(autoincrement())
+  productId Int
+  type      InventoryType
+  quantity  Int
+  reason    String?
+  userId    Int
+  createdAt DateTime     @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+}
+
+model SaleOrder {
+  id          Int      @id @default(autoincrement())
+  userId      Int      // 营业员
+  totalAmount Decimal  @db.Decimal(10, 2) @default(0)
+  createdAt   DateTime @default(now())
+
+  user  User            @relation(fields: [userId], references: [id])
+  items SaleOrderItem[]
+}
+
+model SaleOrderItem {
+  id          Int     @id @default(autoincrement())
+  saleOrderId Int
+  productId   Int
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(10, 2)
+
+  saleOrder SaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+}
