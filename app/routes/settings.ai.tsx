@@ -121,8 +121,9 @@ export async function action({ request }: Route.ActionArgs) {
         return { error: `连接失败 (${res.status}): ${errText.slice(0, 100)}` };
       }
       return { ok: true, intent: "test" };
-    } catch (e: any) {
-      return { error: `连接错误: ${e.message}` };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { error: `连接错误: ${message}` };
     }
   }
 

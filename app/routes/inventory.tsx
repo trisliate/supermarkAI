@@ -327,7 +327,7 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
                           <TableCell colSpan={4} className="h-20 text-center text-muted-foreground text-sm">暂无记录</TableCell>
                         </TableRow>
                       ) : (
-                        logsFetcher.data.recentLogs.map((log: any) => (
+                        logsFetcher.data.recentLogs.map((log: { id: number; type: "IN" | "OUT"; quantity: number; createdAt: string; user: { name: string } }) => (
                           <TableRow key={log.id}>
                             <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                               {new Date(log.createdAt).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}

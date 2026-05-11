@@ -41,7 +41,7 @@ const urgencyStyles: Record<string, string> = {
 };
 
 function MiniStat({ label, value, icon: Icon, color, subtitle }: {
-  label: string; value: string | number; icon: any; color: string; subtitle?: string;
+  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string; subtitle?: string;
 }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">

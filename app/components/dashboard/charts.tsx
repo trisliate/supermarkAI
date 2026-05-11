@@ -16,14 +16,14 @@ const accent = "#3b82f6";
 const accent2 = "#8b5cf6";
 const muted = "#94a3b8";
 
-function MiniTooltip({ active, payload, label }: any) {
+function MiniTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ color?: string; value?: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
       <p className="text-[11px] text-slate-400 mb-1">{label}</p>
-      {payload.map((p: any, i: number) => (
+      {payload.map((p, i) => (
         <p key={i} className="text-sm font-semibold" style={{ color: p.color }}>
-          ¥{formatPrice(p.value)}
+          ¥{formatPrice(p.value ?? 0)}
         </p>
       ))}
     </div>
@@ -31,7 +31,7 @@ function MiniTooltip({ active, payload, label }: any) {
 }
 
 function ChartCard({ title, icon: Icon, children, value, subtitle }: {
-  title: string; icon: any; children: React.ReactNode; value?: string; subtitle?: string;
+  title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; value?: string; subtitle?: string;
 }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">

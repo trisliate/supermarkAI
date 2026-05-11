@@ -209,7 +209,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       inventoryData: {
         stats: {
           totalProducts: productCount,
-          outStock: outOfStockCount,
+          outOfStock: outOfStockCount,
           lowStock: lowStockCount,
           totalValue: recommendations.totalStockValue,
         },
@@ -313,14 +313,14 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function DashboardPage({ loaderData }: Route.ComponentProps) {
-  const { user, role } = loaderData as any;
+  const { user } = loaderData;
 
   return (
     <AppLayout user={user}>
-      {role === "admin" && <AdminDashboard {...(loaderData as any).adminData} />}
-      {role === "purchaser" && <PurchaserDashboard {...(loaderData as any).purchaserData} />}
-      {role === "inventory_keeper" && <InventoryDashboard {...(loaderData as any).inventoryData} />}
-      {role === "cashier" && <CashierDashboard {...(loaderData as any).cashierData} />}
+      {loaderData.role === "admin" && <AdminDashboard {...loaderData.adminData} />}
+      {loaderData.role === "purchaser" && <PurchaserDashboard {...loaderData.purchaserData} />}
+      {loaderData.role === "inventory_keeper" && <InventoryDashboard {...loaderData.inventoryData} />}
+      {loaderData.role === "cashier" && <CashierDashboard {...loaderData.cashierData} />}
     </AppLayout>
   );
 }

@@ -6,7 +6,8 @@
       "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"Yes, reset and continue\" npx prisma migrate reset --force)",
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(npm run *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npx eslint *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\80900\\.claude\\plans"

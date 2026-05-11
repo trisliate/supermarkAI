@@ -8,7 +8,7 @@ interface Message {
   title?: string;
   content: string;
   type?: "text" | "table" | "navigate";
-  data?: any[];
+  data?: Record<string, unknown>[];
   navigateTo?: string;
   retryQuery?: string;
 }

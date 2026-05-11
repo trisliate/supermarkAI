@@ -1,18 +1,30 @@
 import { db } from "./db.server";
 import { decrypt } from "./crypto.server";
 import { formatPrice } from "./utils";
+import type { AIConfig } from "@prisma/client";
 
 export interface AssistantResponse {
   type: "text" | "list" | "table" | "navigate";
   title: string;
   content: string;
-  data?: any[];
+  data?: Record<string, unknown>[];
   navigateTo?: string;
 }
 
+interface LLMToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
 interface ChatMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string | null;
+  tool_calls?: LLMToolCall[];
+  tool_call_id?: string;
 }
 
 const providerBaseUrls: Record<string, string> = {
@@ -93,20 +105,22 @@ const tools = [
   },
 ];
 
-async function executeTool(name: string, args: any): Promise<string> {
+async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
     case "navigate": {
+      const page = args.page as string;
       const pageNames: Record<string, string> = {
         dashboard: "经营总览", products: "商品管理", categories: "分类管理",
         suppliers: "供应商管理", purchases: "采购管理", inventory: "库存管理",
         sales: "销售管理", "sales/new": "收银台", users: "用户管理",
         profile: "个人信息", "settings/ai": "AI 设置",
       };
-      return JSON.stringify({ navigateTo: `/${args.page}`, pageName: pageNames[args.page] || args.page });
+      return JSON.stringify({ navigateTo: `/${page}`, pageName: pageNames[page] || page });
     }
     case "search_products": {
+      const query = args.query as string;
       const products = await db.product.findMany({
-        where: { name: { contains: args.query }, status: "active" },
+        where: { name: { contains: query }, status: "active" },
         include: { inventory: true, category: true },
         take: 10,
       });
@@ -141,7 +155,8 @@ async function executeTool(name: string, args: any): Promise<string> {
       return JSON.stringify({ period: args.period, totalAmount: formatPrice(amount), orderCount, avgOrder: orderCount > 0 ? formatPrice(amount / orderCount) : "0.00" });
     }
     case "get_supplier_info": {
-      const where = args.name ? { name: { contains: args.name }, status: "active" as const } : { status: "active" as const };
+      const name = args.name as string | undefined;
+      const where = name ? { name: { contains: name }, status: "active" as const } : { status: "active" as const };
       const suppliers = await db.supplier.findMany({ where, take: 10 });
       return JSON.stringify(suppliers.map((s) => ({ name: s.name, contact: s.contact, phone: s.phone, address: s.address || "未填写" })));
     }
@@ -178,7 +193,7 @@ async function buildSystemPrompt(): Promise<string> {
 你可以使用提供的工具来查询数据和导航页面。请用中文回答，简洁明了。`;
 }
 
-async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: any[] }> {
+async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
   const baseUrl = config.baseUrl || providerBaseUrls[config.provider] || "";
   const decryptedKey = decrypt(config.apiKey);
 
@@ -221,15 +236,16 @@ export async function processQuery(input: string, history?: ChatMessage[]): Prom
     if (config) {
       return await processWithLLM(config, input, history);
     }
-  } catch (e: any) {
-    console.error("LLM error, falling back to keyword matching:", e.message);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("LLM error, falling back to keyword matching:", message);
   }
 
   // Fallback to keyword matching
   return processWithKeywords(input);
 }
 
-async function processWithLLM(config: any, input: string, history?: ChatMessage[]): Promise<AssistantResponse> {
+async function processWithLLM(config: AIConfig, input: string, history?: ChatMessage[]): Promise<AssistantResponse> {
   const systemPrompt = await buildSystemPrompt();
 
   const messages: ChatMessage[] = [
@@ -251,13 +267,13 @@ async function processWithLLM(config: any, input: string, history?: ChatMessage[
 
       toolResults.push({
         role: "assistant" as const,
-        content: null as any,
+        content: null,
         tool_calls: [toolCall],
-      } as any);
+      });
       toolResults.push({
         role: "tool" as const,
         content: toolResult,
-      } as any);
+      });
     }
 
     // Send tool results back to LLM for final response
@@ -271,7 +287,7 @@ async function processWithLLM(config: any, input: string, history?: ChatMessage[
     result = await callLLM(config, finalMessages);
 
     // Check if any tool call was a navigation
-    const navCall = result.toolCalls?.find((tc: any) => tc.function?.name === "navigate");
+    const navCall = result.toolCalls?.find((tc) => tc.function?.name === "navigate");
     if (navCall) {
       const navArgs = JSON.parse(navCall.function.arguments);
       const navResult = JSON.parse(await executeTool("navigate", navArgs));

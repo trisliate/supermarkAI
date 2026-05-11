@@ -30,7 +30,7 @@ interface AdminDashboardProps {
 }
 
 function MiniStat({ label, value, icon: Icon, color, trend }: {
-  label: string; value: string | number; icon: any; color: string; trend?: { value: number; isUp: boolean };
+  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string; trend?: { value: number; isUp: boolean };
 }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
