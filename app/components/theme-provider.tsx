@@ -46,24 +46,36 @@ function applyTheme(theme: Theme): "light" | "dark" {
   return theme;
 }
 
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "dark";
+  return (localStorage.getItem("theme") as Theme) || "dark";
+}
+
+function getInitialAccent(): AccentColor {
+  if (typeof window === "undefined") return "blue";
+  return (localStorage.getItem("accent-color") as AccentColor) || "blue";
+}
+
+function getResolvedTheme(theme: Theme): "light" | "dark" {
+  if (typeof window === "undefined") return "dark";
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
-  const [accentColor, setAccentColorState] = useState<AccentColor>("blue");
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [accentColor, setAccentColorState] = useState<AccentColor>(getInitialAccent);
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() => getResolvedTheme(getInitialTheme()));
 
-  // Initialize from localStorage on mount
+  // Sync accent color on mount and listen for system theme changes
   useEffect(() => {
-    const savedTheme = (localStorage.getItem("theme") as Theme) || "dark";
     const savedAccent = (localStorage.getItem("accent-color") as AccentColor) || "blue";
-    setThemeState(savedTheme);
-    setAccentColorState(savedAccent);
-    const resolved = applyTheme(savedTheme);
-    setResolvedTheme(resolved);
-    applyAccentColor(savedAccent, resolved === "dark");
+    applyAccentColor(savedAccent, resolvedTheme === "dark");
 
-    // Listen for system theme changes when in "system" mode
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
+    const handler = () => {
       if (localStorage.getItem("theme") === "system") {
         const r = applyTheme("system");
         setResolvedTheme(r);
@@ -80,9 +92,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("theme", t);
     const resolved = applyTheme(t);
     setResolvedTheme(resolved);
-    const accent = (localStorage.getItem("accent-color") as AccentColor) || "blue";
-    applyAccentColor(accent, resolved === "dark");
-  }, []);
+    applyAccentColor(accentColor, resolved === "dark");
+  }, [accentColor]);
 
   const setAccentColor = useCallback((c: AccentColor) => {
     setAccentColorState(c);

@@ -1,5 +1,5 @@
 import { Form, Link, useLocation } from "react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
 import { Cat, Palette, LogOut, Sun, Moon, Monitor, PanelLeft } from "lucide-react";
@@ -7,6 +7,7 @@ import { NotificationDropdown } from "~/components/notification-dropdown";
 import { useTheme, type AccentColor } from "~/components/theme-provider";
 import { Switch } from "~/components/ui/switch";
 import { useSidebar } from "~/components/ui/sidebar";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "仪表盘",
@@ -50,6 +51,8 @@ interface HeaderProps {
 export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const logoutFormRef = useRef<HTMLFormElement>(null);
   const { theme, setTheme, accentColor, setAccentColor, resolvedTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
 
@@ -175,30 +178,37 @@ export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
         {/* User avatar - goes to profile */}
         <Link
           to="/profile"
-          className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           title="个人信息"
         >
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm">
+          <div className="w-7 h-7 bg-slate-900 dark:bg-white rounded-full flex items-center justify-center text-white dark:text-slate-900 text-xs font-bold">
             {user.name.charAt(0)}
           </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</p>
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium border ${roleColors[user.role] || "bg-gray-50 text-gray-600 border-gray-200"}`}>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${roleColors[user.role] || "bg-gray-50 text-gray-600"}`}>
               {roleLabels[user.role]}
             </span>
           </div>
         </Link>
 
-        {/* Logout - separate button */}
-        <Form method="post" action="/logout">
-          <button
-            type="submit"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:text-slate-500 dark:hover:text-red-400 dark:hover:bg-red-950/20 transition-colors"
-            title="退出登录"
-          >
-            <LogOut className="w-[18px] h-[18px]" />
-          </button>
-        </Form>
+        {/* Logout */}
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:text-slate-500 dark:hover:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+          title="退出登录"
+        >
+          <LogOut className="w-[18px] h-[18px]" />
+        </button>
+        <Form ref={logoutFormRef} method="post" action="/logout" className="hidden" />
+        <ConfirmDialog
+          open={showLogoutConfirm}
+          onOpenChange={setShowLogoutConfirm}
+          title="退出登录"
+          description="确定要退出当前账号吗？"
+          confirmText="退出"
+          onConfirm={() => logoutFormRef.current?.requestSubmit()}
+        />
       </div>
     </header>
   );

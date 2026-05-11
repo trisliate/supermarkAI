@@ -31,7 +31,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     },
   });
   if (!purchase) throw new Response("采购单不存在", { status: 404 });
-  return { user, purchase };
+  const serializedPurchase = {
+    ...purchase,
+    totalAmount: Number(purchase.totalAmount),
+    items: purchase.items.map((item) => ({ ...item, unitPrice: Number(item.unitPrice) })),
+  };
+  return { user, purchase: serializedPurchase };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {

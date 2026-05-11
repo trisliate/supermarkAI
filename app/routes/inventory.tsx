@@ -35,7 +35,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
     }),
   ]);
-  return { user, inventories, total, page, pageSize: PAGE_SIZE };
+  const serializedInventories = inventories.map((inv) => ({
+    ...inv,
+    product: { ...inv.product, price: Number(inv.product.price) },
+  }));
+  return { user, inventories: serializedInventories, total, page, pageSize: PAGE_SIZE };
 }
 
 export default function InventoryPage({ loaderData }: Route.ComponentProps) {

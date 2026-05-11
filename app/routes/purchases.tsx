@@ -51,7 +51,12 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
     }),
   ]);
-  return { user, purchases, total, page, pageSize: PAGE_SIZE };
+  const serializedPurchases = purchases.map((p) => ({
+    ...p,
+    totalAmount: Number(p.totalAmount),
+    items: p.items.map((item) => ({ ...item, unitPrice: Number(item.unitPrice) })),
+  }));
+  return { user, purchases: serializedPurchases, total, page, pageSize: PAGE_SIZE };
 }
 
 export async function action({ request }: Route.ActionArgs) {

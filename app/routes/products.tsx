@@ -17,6 +17,7 @@ import { PageSkeleton } from "~/components/ui/page-skeleton";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import { Plus, Pencil, Trash2, Package, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
@@ -38,7 +39,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     db.product.count(),
     db.category.findMany({ orderBy: { name: "asc" } }),
   ]);
-  return { user, products, categories, total, page, pageSize: PAGE_SIZE };
+  const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price) }));
+  return { user, products: serializedProducts, categories, total, page, pageSize: PAGE_SIZE };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -99,6 +101,8 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editProduct, setEditProduct] = useState<typeof products[number] | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [newCategoryId, setNewCategoryId] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const isDeleting = fetcher.state !== "idle";
@@ -117,6 +121,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
       } else if (fetcher.data.intent === "create" && fetcher.data.ok) {
         toast.success("商品创建成功");
         setShowNew(false);
+        setNewCategoryId("");
       } else if (fetcher.data.error) {
         toast.error(fetcher.data.error);
       }
@@ -228,7 +233,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                         <TableCell className="text-right">
                           {user.role === "admin" ? (
                             <div className="flex items-center justify-end gap-0.5">
-                              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setEditProduct(p)}>
+                              <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setEditProduct(p); setEditCategoryId(String(p.categoryId)); }}>
                                 <Pencil className="size-3.5" />
                               </Button>
                               <Button
@@ -258,7 +263,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
       )}
 
       {/* New Product Dialog */}
-      <Dialog open={showNew} onOpenChange={(open) => { if (!open) setShowNew(false); }}>
+      <Dialog open={showNew} onOpenChange={(open) => { if (!open) { setShowNew(false); setNewCategoryId(""); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -274,12 +279,14 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
             </div>
             <div className="space-y-1.5">
               <Label>分类</Label>
-              <Select name="categoryId" required>
-                <SelectTrigger className="w-full"><SelectValue placeholder="选择分类" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                value={newCategoryId}
+                onValueChange={setNewCategoryId}
+                placeholder="选择分类"
+                searchPlaceholder="搜索分类..."
+              />
+              <input type="hidden" name="categoryId" value={newCategoryId} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -325,12 +332,14 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
               </div>
               <div className="space-y-1.5">
                 <Label>分类</Label>
-                <Select name="categoryId" required defaultValue={String(editProduct.categoryId)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={categories.map((c) => ({ value: String(c.id), label: c.name }))}
+                  value={editCategoryId}
+                  onValueChange={setEditCategoryId}
+                  placeholder="选择分类"
+                  searchPlaceholder="搜索分类..."
+                />
+                <input type="hidden" name="categoryId" value={editCategoryId} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

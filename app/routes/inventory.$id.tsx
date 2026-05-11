@@ -29,7 +29,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     take: 15,
   });
 
-  return { user, inventory, recentLogs };
+  const serializedInventory = {
+    ...inventory,
+    product: { ...inventory.product, price: Number(inventory.product.price) },
+  };
+  return { user, inventory: serializedInventory, recentLogs };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {

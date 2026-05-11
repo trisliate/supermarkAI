@@ -6,8 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(amount: number | { valueOf(): number }): string {
-  return Number(amount).toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const n = Number(amount);
+  if (!isFinite(n)) return "0.00";
+  return n.toFixed(2);
 }

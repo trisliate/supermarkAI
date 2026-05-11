@@ -10,6 +10,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Loader2, AlertCircle, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { FormPage } from "~/components/ui/form-page";
@@ -22,7 +23,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     db.supplier.findMany({ where: { status: "active" }, orderBy: { name: "asc" } }),
     db.product.findMany({ where: { status: "active" }, orderBy: { name: "asc" } }),
   ]);
-  return { user, suppliers, products };
+  const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price) }));
+  return { user, suppliers, products: serializedProducts };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -142,18 +144,21 @@ export default function NewPurchasePage() {
             <div className="flex gap-2 items-end">
               <div className="flex-1">
                 <Label className="text-xs">商品</Label>
-                <Select value={selectedProduct} onValueChange={(val) => {
-                  setSelectedProduct(val ?? "");
-                  const p = products.find((pr) => pr.id === Number(val));
-                  if (p) setUnitPrice(String(Number(p.price)));
-                }}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="选择商品" /></SelectTrigger>
-                  <SelectContent>
-                    {products.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.name}（¥{formatPrice(Number(p.price))}/{p.unit}）</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={products.map((p) => ({
+                    value: String(p.id),
+                    label: `${p.name}（¥${formatPrice(Number(p.price))}/${p.unit}）`,
+                  }))}
+                  value={selectedProduct}
+                  onValueChange={(val) => {
+                    setSelectedProduct(val);
+                    const p = products.find((pr) => pr.id === Number(val));
+                    if (p) setUnitPrice(String(Number(p.price)));
+                  }}
+                  placeholder="选择商品"
+                  searchPlaceholder="搜索商品..."
+                  emptyText="无匹配商品"
+                />
               </div>
               <div className="w-20">
                 <Label className="text-xs">数量</Label>

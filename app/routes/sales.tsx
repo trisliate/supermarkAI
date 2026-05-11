@@ -28,7 +28,12 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
     }),
   ]);
-  return { user, sales, total, page, pageSize: PAGE_SIZE };
+  const serializedSales = sales.map((s) => ({
+    ...s,
+    totalAmount: Number(s.totalAmount),
+    items: s.items.map((item) => ({ ...item, unitPrice: Number(item.unitPrice) })),
+  }));
+  return { user, sales: serializedSales, total, page, pageSize: PAGE_SIZE };
 }
 
 export default function SalesPage({ loaderData }: Route.ComponentProps) {

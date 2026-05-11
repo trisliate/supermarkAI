@@ -28,7 +28,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     orderBy: { name: "asc" },
   });
   const available = products.filter((p) => p.inventory && p.inventory.quantity > 0);
-  return { user, products: available };
+  const serializedProducts = available.map((p) => ({ ...p, price: Number(p.price) }));
+  return { user, products: serializedProducts };
 }
 
 export async function action({ request }: Route.ActionArgs) {

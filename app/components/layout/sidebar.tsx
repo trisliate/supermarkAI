@@ -1,11 +1,10 @@
 import { Link, useLocation } from "react-router";
-import { useSidebar } from "~/components/ui/sidebar";
 import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
 import {
   LayoutDashboard, Users, Package, Tags, Truck,
   ShoppingCart, Warehouse, Receipt, Store,
-  AlertTriangle, Bot, ChevronRight,
+  AlertTriangle, Bot,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -18,18 +17,13 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "~/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible";
 
 interface NavItem {
   label: string;
   href: string;
   roles: string[];
   icon: LucideIcon;
-  children?: NavItem[];
 }
 
 interface NavGroup {
@@ -62,12 +56,8 @@ const navGroups: NavGroup[] = [
   {
     label: "销售",
     items: [
-      {
-        label: "销售管理", href: "/sales", roles: ["admin", "cashier"], icon: Receipt,
-        children: [
-          { label: "收银台", href: "/sales/new", roles: ["admin", "cashier"], icon: Store },
-        ],
-      },
+      { label: "销售管理", href: "/sales", roles: ["admin", "cashier"], icon: Receipt },
+      { label: "收银台", href: "/sales/new", roles: ["admin", "cashier"], icon: Store },
     ],
   },
   {
@@ -88,7 +78,6 @@ const roleDotColors: Record<string, string> = {
 
 export function AppSidebar({ user }: { user: AuthUser }) {
   const location = useLocation();
-  const { state } = useSidebar();
 
   const isActive = (href: string) =>
     location.pathname === href ||
@@ -132,58 +121,6 @@ export function AppSidebar({ user }: { user: AuthUser }) {
                   {filteredItems.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
-                    const hasChildren = item.children && item.children.length > 0;
-
-                    if (hasChildren) {
-                      if (state === "collapsed") {
-                        return (
-                          <SidebarMenuItem key={item.href + item.label}>
-                            <SidebarMenuButton
-                              render={<Link to={item.href} />}
-                              isActive={active}
-                              tooltip={item.label}
-                              className="gap-3 h-9 rounded-xl text-[13px] hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
-                            >
-                              <Icon className="w-4 h-4 shrink-0" />
-                              <span className="truncate">{item.label}</span>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        );
-                      }
-                      return (
-                        <Collapsible key={item.href + item.label} defaultOpen className="group/collapsible">
-                          <SidebarMenuItem>
-                            <CollapsibleTrigger
-                              className="flex w-full items-center gap-3 h-9 rounded-xl px-2 text-[13px] text-left transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
-                              data-active={active || undefined}
-                            >
-                              <Icon className="w-4 h-4 shrink-0" />
-                              <span className="truncate flex-1">{item.label}</span>
-                              <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <SidebarMenuSub>
-                                {item.children!.filter((c) => c.roles.includes(user.role)).map((child) => {
-                                  const ChildIcon = child.icon;
-                                  return (
-                                    <SidebarMenuSubItem key={child.href}>
-                                      <SidebarMenuSubButton
-                                        render={<Link to={child.href} />}
-                                        isActive={isActive(child.href)}
-                                        className="h-8 rounded-lg text-[12px] hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
-                                      >
-                                        <ChildIcon className="w-3.5 h-3.5 shrink-0" />
-                                        <span>{child.label}</span>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  );
-                                })}
-                              </SidebarMenuSub>
-                            </CollapsibleContent>
-                          </SidebarMenuItem>
-                        </Collapsible>
-                      );
-                    }
 
                     return (
                       <SidebarMenuItem key={item.href + item.label}>

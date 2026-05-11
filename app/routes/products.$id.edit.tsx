@@ -19,7 +19,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const product = await db.product.findUnique({ where: { id: Number(params.id) } });
   if (!product) throw new Response("商品不存在", { status: 404 });
   const categories = await db.category.findMany({ orderBy: { name: "asc" } });
-  return { user, product, categories };
+  const serializedProduct = { ...product, price: Number(product.price) };
+  return { user, product: serializedProduct, categories };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
