@@ -2,10 +2,12 @@ import { lazy, Suspense } from "react";
 import { Link } from "react-router";
 import {
   Package, Truck, ShoppingCart, AlertTriangle, DollarSign, Users,
-  TrendingUp, Clock, CheckCircle, ArrowRight, BarChart3, UserCheck,
+  TrendingUp, Clock, CheckCircle, ArrowRight, UserCheck, Zap,
 } from "lucide-react";
-import { StatCard } from "../stat-card";
 import { Skeleton } from "~/components/ui/skeleton";
+import { Badge } from "~/components/ui/badge";
+import { ScrollArea } from "~/components/ui/scroll-area";
+import { formatPrice } from "~/lib/utils";
 
 const Charts = lazy(() => import("../charts").then((m) => ({ default: m.Charts })));
 
@@ -27,6 +29,29 @@ interface AdminDashboardProps {
   pendingPurchases: Array<{ id: number; supplier: string; amount: number; createdAt: string }>;
 }
 
+function MiniStat({ label, value, icon: Icon, color, trend }: {
+  label: string; value: string | number; icon: any; color: string; trend?: { value: number; isUp: boolean };
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+        <Icon className="w-4 h-4 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{label}</p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-bold text-slate-900 dark:text-white">{value}</span>
+          {trend && (
+            <span className={`text-[10px] font-medium ${trend.isUp ? "text-emerald-500" : "text-red-500"}`}>
+              {trend.isUp ? "↑" : "↓"}{Math.abs(trend.value)}%
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminDashboard({
   stats, trendData, pieData, inventoryStatus, topProducts, staffPerformance, pendingPurchases,
 }: AdminDashboardProps) {
@@ -42,143 +67,138 @@ export function AdminDashboard({
   })();
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Welcome */}
+    <div className="animate-fade-in space-y-4">
+      {/* Top bar: greeting + stats */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{greeting}，管理员</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-          </p>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{greeting}，店长</h2>
+          <span className="text-xs text-slate-400">
+            {new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}
+          </span>
         </div>
         <Link
           to="/sales/new"
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-blue-500/25 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md text-xs font-medium hover:shadow-md transition-all"
         >
-          进入收银台
+          <Zap className="w-3 h-3" />
+          收银台
         </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard label="商品数量" value={stats.productCount} icon={Package} color="bg-blue-500" />
-        <StatCard label="今日营收" value={`¥${stats.todaySalesAmount.toFixed(0)}`} icon={DollarSign} color="bg-emerald-500" trend={{ value: Math.abs(salesTrend), isUp: salesTrend >= 0 }} />
-        <StatCard label="待审批采购" value={stats.pendingPurchaseCount} icon={ShoppingCart} color="bg-amber-500" />
-        <StatCard label="库存预警" value={stats.lowStockCount} icon={AlertTriangle} color="bg-red-500" subtitle={stats.lowStockCount > 0 ? "需要关注" : "库存正常"} />
-        <StatCard label="活跃供应商" value={stats.supplierCount} icon={Truck} color="bg-cyan-500" />
-        <StatCard label="员工数" value={stats.userCount} icon={Users} color="bg-violet-500" />
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <MiniStat label="商品数量" value={stats.productCount} icon={Package} color="bg-blue-500" />
+        <MiniStat label="今日营收" value={`¥${formatPrice(stats.todaySalesAmount)}`} icon={DollarSign} color="bg-emerald-500" trend={{ value: Math.abs(salesTrend), isUp: salesTrend >= 0 }} />
+        <MiniStat label="待审批" value={stats.pendingPurchaseCount} icon={ShoppingCart} color="bg-amber-500" />
+        <MiniStat label="库存预警" value={stats.lowStockCount} icon={AlertTriangle} color="bg-red-500" />
+        <MiniStat label="供应商" value={stats.supplierCount} icon={Truck} color="bg-cyan-500" />
+        <MiniStat label="员工" value={stats.userCount} icon={Users} color="bg-violet-500" />
       </div>
 
-      {/* Charts */}
-      <Suspense
-        fallback={
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-                <Skeleton className="h-5 w-32 mb-4" />
-                <Skeleton className="h-[280px] w-full rounded-lg" />
+      {/* Main content: charts + side panels */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4" style={{ minHeight: 0 }}>
+        {/* Charts - takes 2 columns */}
+        <div className="xl:col-span-2">
+          <Suspense
+            fallback={
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                <Skeleton className="h-[260px] w-full rounded-lg" />
               </div>
-            ))}
-          </div>
-        }
-      >
-        <Charts trendData={trendData} pieData={pieData} inventoryStatus={inventoryStatus} />
-      </Suspense>
-
-      {/* Bottom section: Hot products + Staff performance + Pending */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Hot Products */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-amber-500" />
-            <h3 className="font-semibold text-slate-900 dark:text-white">热销 Top 5</h3>
-          </div>
-          <div className="space-y-3">
-            {topProducts.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">暂无销售数据</p>
-            ) : (
-              topProducts.map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0
-                      ${i === 0 ? "bg-amber-500" : i === 1 ? "bg-slate-400" : i === 2 ? "bg-amber-700" : "bg-slate-300 dark:bg-slate-600"}`}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{item.name}</p>
-                    <p className="text-xs text-slate-400">售出 {item.quantity} 件</p>
-                  </div>
-                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">¥{item.amount.toFixed(0)}</span>
-                </div>
-              ))
-            )}
-          </div>
+            }
+          >
+            <Charts trendData={trendData} pieData={pieData} inventoryStatus={inventoryStatus} />
+          </Suspense>
         </div>
 
-        {/* Staff Performance */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <UserCheck className="w-5 h-5 text-blue-500" />
-            <h3 className="font-semibold text-slate-900 dark:text-white">员工绩效（今日）</h3>
-          </div>
-          <div className="space-y-3">
-            {staffPerformance.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">暂无数据</p>
-            ) : (
-              staffPerformance.map((s, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{s.name}</p>
-                    <p className="text-xs text-slate-400">{s.role} · {s.salesCount} 单</p>
-                  </div>
-                  <span className="text-sm font-semibold text-emerald-600">¥{s.salesAmount.toFixed(0)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Pending Purchases */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-white">待办事项</h3>
+        {/* Right side: top products + staff */}
+        <div className="space-y-4">
+          {/* Top products */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">热销 Top 5</span>
             </div>
-            <Link to="/purchases" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
-              查看全部 <ArrowRight className="w-3 h-3" />
+            <div className="space-y-2">
+              {topProducts.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">暂无数据</p>
+              ) : (
+                topProducts.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${i === 0 ? "bg-amber-500" : i === 1 ? "bg-slate-400" : "bg-slate-300 dark:bg-slate-600"}`}>
+                      {i + 1}
+                    </span>
+                    <span className="text-[13px] text-slate-700 dark:text-slate-200 truncate flex-1">{item.name}</span>
+                    <span className="text-[11px] text-slate-400">{item.quantity}件</span>
+                    <span className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">¥{formatPrice(item.amount)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Staff performance */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UserCheck className="w-4 h-4 text-blue-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">员工绩效</span>
+            </div>
+            <div className="space-y-2">
+              {staffPerformance.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">暂无数据</p>
+              ) : (
+                staffPerformance.slice(0, 5).map((s, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] text-white font-medium shrink-0">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{s.name}</p>
+                        <p className="text-[10px] text-slate-400">{s.role} · {s.salesCount}单</p>
+                      </div>
+                    </div>
+                    <span className="text-[13px] font-semibold text-emerald-600 shrink-0">¥{formatPrice(s.salesAmount)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom: pending purchases (horizontal scroll) */}
+      {pendingPurchases.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">待审批采购</span>
+            </div>
+            <Link to="/purchases" className="text-[11px] text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
+              全部 <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
-          <div className="space-y-3">
-            {pendingPurchases.length === 0 ? (
-              <div className="flex flex-col items-center py-6 text-slate-400">
-                <CheckCircle className="w-8 h-8 mb-2" />
-                <p className="text-sm">暂无待办</p>
-              </div>
-            ) : (
-              pendingPurchases.map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/purchases/${p.id}`}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      PO-{String(p.id).padStart(4, "0")}
-                    </p>
-                    <p className="text-xs text-slate-400">{p.supplier}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">¥{p.amount.toFixed(0)}</p>
-                    <p className="text-xs text-slate-400">{new Date(p.createdAt).toLocaleDateString("zh-CN")}</p>
-                  </div>
-                </Link>
-              ))
-            )}
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {pendingPurchases.map((p) => (
+              <Link
+                key={p.id}
+                to={`/purchases/${p.id}`}
+                className="flex-shrink-0 w-48 px-3 py-2 rounded-md border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-mono text-slate-500">PO-{String(p.id).padStart(4, "0")}</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0">待审批</Badge>
+                </div>
+                <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{p.supplier}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">¥{formatPrice(p.amount)}</span>
+                  <span className="text-[10px] text-slate-400">{new Date(p.createdAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}</span>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

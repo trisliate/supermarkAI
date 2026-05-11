@@ -3,7 +3,8 @@ import {
   Package, AlertTriangle, XCircle, DollarSign,
   ArrowRight, Clock, TrendingDown, Settings,
 } from "lucide-react";
-import { StatCard } from "../stat-card";
+import { Badge } from "~/components/ui/badge";
+import { formatPrice } from "~/lib/utils";
 import type { SlowMovingItem } from "~/lib/recommendation.server";
 
 interface InventoryDashboardProps {
@@ -25,190 +26,217 @@ const typeColors: Record<string, string> = {
   OUT: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
+function MiniStat({ label, value, icon: Icon, color, subtitle }: {
+  label: string; value: string | number; icon: any; color: string; subtitle?: string;
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+        <Icon className="w-4 h-4 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{label}</p>
+        <span className="text-lg font-bold text-slate-900 dark:text-white">{value}</span>
+        {subtitle && <p className="text-[10px] text-slate-400">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
 export function InventoryDashboard({
   stats, inventoryStatus, alertItems, recentLogs, slowMoving,
 }: InventoryDashboardProps) {
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "早上好";
+    if (h < 18) return "下午好";
+    return "晚上好";
+  })();
+
   const statusEntries = Object.entries(inventoryStatus).filter(([_, v]) => v > 0);
   const total = statusEntries.reduce((sum, [_, v]) => sum + v, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">库存工作台</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="商品总数" value={stats.totalProducts} icon={Package} color="bg-blue-500" />
-        <StatCard label="缺货商品" value={stats.outOfStock} icon={XCircle} color="bg-red-500" subtitle={stats.outOfStock > 0 ? "需要立即补货" : "暂无缺货"} />
-        <StatCard label="库存偏低" value={stats.lowStock} icon={AlertTriangle} color="bg-amber-500" subtitle={stats.lowStock > 0 ? "需要关注" : "库存充足"} />
-        <StatCard label="库存总值" value={`¥${stats.totalValue.toFixed(0)}`} icon={DollarSign} color="bg-emerald-500" />
-      </div>
-
-      {/* Status overview + Alert list */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Inventory Status Pie (simple) */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-4">库存状态分布</h3>
-          <div className="space-y-4">
-            {statusEntries.map(([name, count]) => {
-              const pct = total > 0 ? (count / total) * 100 : 0;
-              const colors: Record<string, string> = {
-                "缺货": "bg-red-500",
-                "偏低": "bg-amber-500",
-                "正常": "bg-emerald-500",
-                "充足": "bg-blue-500",
-              };
-              return (
-                <div key={name}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${colors[name] || "bg-slate-400"}`} />
-                      <span className="text-sm text-slate-700 dark:text-slate-200">{name}</span>
-                    </div>
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{count}</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
-                    <div
-                      className={`h-full rounded-full ${colors[name] || "bg-slate-400"} transition-all`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Link to="/inventory" className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1">
-              查看全部库存 <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
+    <div className="animate-fade-in space-y-4">
+      {/* Top bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{greeting}，理货员</h2>
+          <span className="text-xs text-slate-400">
+            {new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}
+          </span>
         </div>
-
-        {/* Alert List */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-white">库存预警清单</h3>
-            </div>
-            <span className="text-xs text-slate-400">{alertItems.length} 项</span>
-          </div>
-          {alertItems.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-slate-400">
-              <Package className="w-10 h-10 mb-3 opacity-50" />
-              <p className="text-sm">所有商品库存充足</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <th className="text-left py-2 font-medium text-slate-500">商品</th>
-                    <th className="text-left py-2 font-medium text-slate-500">分类</th>
-                    <th className="text-right py-2 font-medium text-slate-500">库存</th>
-                    <th className="text-right py-2 font-medium text-slate-500">状态</th>
-                    <th className="text-right py-2 font-medium text-slate-500">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {alertItems.map((item) => (
-                    <tr key={item.id} className={item.quantity === 0 ? "bg-red-50/50 dark:bg-red-950/10" : ""}>
-                      <td className="py-2.5 font-medium text-slate-700 dark:text-slate-200">{item.productName}</td>
-                      <td className="py-2.5 text-slate-500 dark:text-slate-400">{item.categoryName}</td>
-                      <td className="py-2.5 text-right font-mono">
-                        <span className={item.quantity === 0 ? "text-red-600 font-bold" : "text-amber-600 font-semibold"}>
-                          {item.quantity} {item.unit}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-right">
-                        {item.quantity === 0 ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800 font-medium">缺货</span>
-                        ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-medium">偏低</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 text-right">
-                        <Link to={`/inventory/${item.id}`} className="text-blue-500 hover:text-blue-600 text-xs flex items-center gap-1 justify-end">
-                          <Settings className="w-3 h-3" /> 调整
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <Link
+          to="/inventory"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-md text-xs font-medium hover:shadow-md transition-all"
+        >
+          <Package className="w-3 h-3" />
+          库存管理
+        </Link>
       </div>
 
-      {/* Bottom: Recent logs + Slow moving */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Logs */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-white">最近出入库</h3>
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MiniStat label="商品总数" value={stats.totalProducts} icon={Package} color="bg-blue-500" />
+        <MiniStat label="缺货商品" value={stats.outOfStock} icon={XCircle} color="bg-red-500" subtitle={stats.outOfStock > 0 ? "需要立即补货" : "暂无缺货"} />
+        <MiniStat label="库存偏低" value={stats.lowStock} icon={AlertTriangle} color="bg-amber-500" subtitle={stats.lowStock > 0 ? "需要关注" : "库存充足"} />
+        <MiniStat label="库存总值" value={`¥${formatPrice(stats.totalValue)}`} icon={DollarSign} color="bg-emerald-500" />
+      </div>
+
+      {/* Main content: status + alerts + side panels */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Alert list + Status */}
+        <div className="xl:col-span-2 space-y-4">
+          {/* Status bar */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">库存状态分布</span>
             </div>
-            <Link to="/inventory/log" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1">
-              全部 <ArrowRight className="w-3 h-3" />
-            </Link>
+            <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+              {statusEntries.map(([name, count]) => {
+                const pct = total > 0 ? (count / total) * 100 : 0;
+                const colors: Record<string, string> = {
+                  "缺货": "bg-red-500", "偏低": "bg-amber-500", "正常": "bg-emerald-500", "充足": "bg-blue-500",
+                };
+                return (
+                  <div
+                    key={name}
+                    className={`${colors[name] || "bg-slate-400"} transition-all`}
+                    style={{ width: `${pct}%` }}
+                    title={`${name}: ${count}`}
+                  />
+                );
+              })}
+            </div>
+            <div className="flex gap-4 mt-2">
+              {statusEntries.map(([name, count]) => {
+                const colors: Record<string, string> = {
+                  "缺货": "bg-red-500", "偏低": "bg-amber-500", "正常": "bg-emerald-500", "充足": "bg-blue-500",
+                };
+                return (
+                  <div key={name} className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${colors[name] || "bg-slate-400"}`} />
+                    <span className="text-[11px] text-slate-500">{name}</span>
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="space-y-2">
-            {recentLogs.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6">暂无记录</p>
+
+          {/* Alert table */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">库存预警清单</span>
+              </div>
+              <span className="text-[10px] text-slate-400">{alertItems.length} 项</span>
+            </div>
+            {alertItems.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-slate-400">
+                <Package className="w-8 h-8 mb-2 opacity-50" />
+                <p className="text-xs">所有商品库存充足</p>
+              </div>
             ) : (
-              recentLogs.map((log) => (
-                <div key={log.id} className="flex items-center gap-3 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${typeColors[log.type]}`}>
-                    {typeLabels[log.type]}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-700 dark:text-slate-200 truncate">{log.productName}</p>
-                    <p className="text-xs text-slate-400 truncate">{log.reason}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-semibold ${log.type === "IN" ? "text-emerald-600" : "text-red-500"}`}>
-                      {log.type === "IN" ? "+" : "-"}{log.quantity}
-                    </p>
-                    <p className="text-[10px] text-slate-400">{new Date(log.createdAt).toLocaleDateString("zh-CN")}</p>
-                  </div>
-                </div>
-              ))
+              <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/80">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">商品</th>
+                      <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">分类</th>
+                      <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">库存</th>
+                      <th className="text-center px-4 py-2 font-medium text-slate-500 text-xs">状态</th>
+                      <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {alertItems.map((item) => (
+                      <tr key={item.id} className={item.quantity === 0 ? "bg-red-50/50 dark:bg-red-950/10" : ""}>
+                        <td className="px-4 py-2 font-medium text-slate-700 dark:text-slate-200 text-[13px]">{item.productName}</td>
+                        <td className="px-4 py-2 text-slate-500 text-[13px]">{item.categoryName}</td>
+                        <td className="px-4 py-2 text-right font-mono text-[13px]">
+                          <span className={item.quantity === 0 ? "text-red-600 font-bold" : "text-amber-600 font-semibold"}>
+                            {item.quantity} {item.unit}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <Badge variant={item.quantity === 0 ? "destructive" : "secondary"} className="text-[10px]">
+                            {item.quantity === 0 ? "缺货" : "偏低"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <Link to={`/inventory/${item.id}`} className="text-blue-500 hover:text-blue-600 text-xs flex items-center gap-1 justify-end">
+                            <Settings className="w-3 h-3" /> 调整
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Slow Moving */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="w-5 h-5 text-orange-500" />
-            <h3 className="font-semibold text-slate-900 dark:text-white">滞销预警</h3>
-            <span className="text-xs text-slate-400">（7天零销量且库存充足）</span>
-          </div>
-          {slowMoving.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">暂无滞销商品</p>
-          ) : (
-            <div className="space-y-3">
-              {slowMoving.map((item) => (
-                <div key={item.productId} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.productName}</p>
-                    <p className="text-xs text-slate-400">{item.categoryName} · 库存 {item.stock}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-orange-600">¥{item.stockValue.toFixed(0)}</p>
-                    <p className="text-[10px] text-slate-400">库存价值</p>
-                  </div>
-                </div>
-              ))}
+        {/* Right side: recent logs + slow moving */}
+        <div className="space-y-4">
+          {/* Recent logs */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近出入库</span>
+              </div>
+              <Link to="/inventory/log" className="text-[11px] text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
+                全部 <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
-          )}
+            <div className="space-y-2">
+              {recentLogs.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">暂无记录</p>
+              ) : (
+                recentLogs.slice(0, 5).map((log) => (
+                  <div key={log.id} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${typeColors[log.type]}`}>
+                      {typeLabels[log.type]}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-slate-700 dark:text-slate-200 truncate">{log.productName}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-[13px] font-semibold ${log.type === "IN" ? "text-emerald-600" : "text-red-500"}`}>
+                        {log.type === "IN" ? "+" : "-"}{log.quantity}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Slow moving */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingDown className="w-4 h-4 text-orange-500" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">滞销预警</span>
+            </div>
+            {slowMoving.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">暂无滞销商品</p>
+            ) : (
+              <div className="space-y-2">
+                {slowMoving.slice(0, 5).map((item) => (
+                  <div key={item.productId} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{item.productName}</p>
+                      <p className="text-[10px] text-slate-400">{item.categoryName} · 库存 {item.stock}</p>
+                    </div>
+                    <span className="text-[13px] font-semibold text-orange-600 shrink-0">¥{formatPrice(item.stockValue)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

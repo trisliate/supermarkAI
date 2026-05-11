@@ -1,14 +1,17 @@
 import { Link, useFetcher } from "react-router";
+import { useState, useEffect } from "react";
 import type { Route } from "./+types/purchases.$id";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button, buttonVariants } from "~/components/ui/button";
-import { cn } from "~/lib/utils";
+import { cn, formatPrice } from "~/lib/utils";
 import { Badge } from "~/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { ArrowLeft, CheckCircle, FileText, Package } from "lucide-react";
+import { toast } from "sonner";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "待审批", variant: "outline" },
@@ -74,6 +77,19 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
   const { user, purchase } = loaderData;
   const fetcher = useFetcher();
   const status = statusLabels[purchase.status] || { label: purchase.status, variant: "outline" as const };
+  const [showReceive, setShowReceive] = useState(false);
+  const isReceiving = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.error) {
+        toast.error(fetcher.data.error);
+      } else if (fetcher.data.ok) {
+        toast.success("入库成功，库存已更新");
+        setShowReceive(false);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
 
   return (
     <AppLayout user={user}>
@@ -94,7 +110,7 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-muted-foreground">供应商：</span>{purchase.supplier.name}</div>
               <div><span className="text-muted-foreground">采购员：</span>{purchase.user.name}</div>
-              <div><span className="text-muted-foreground">总金额：</span><span className="font-semibold">¥{Number(purchase.totalAmount).toFixed(2)}</span></div>
+              <div><span className="text-muted-foreground">总金额：</span><span className="font-semibold">¥{formatPrice(Number(purchase.totalAmount))}</span></div>
               <div><span className="text-muted-foreground">创建时间：</span>{new Date(purchase.createdAt).toLocaleString()}</div>
               {purchase.remark && <div className="col-span-2"><span className="text-muted-foreground">备注：</span>{purchase.remark}</div>}
             </div>
@@ -122,8 +138,8 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
                   <TableRow key={item.id}>
                     <TableCell>{item.product.name}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">¥{Number(item.unitPrice).toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">¥{(item.quantity * Number(item.unitPrice)).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">¥{formatPrice(Number(item.unitPrice))}</TableCell>
+                    <TableCell className="text-right font-medium">¥{formatPrice(item.quantity * Number(item.unitPrice))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -132,18 +148,29 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
         </Card>
 
         {purchase.status === "approved" && (user.role === "admin" || user.role === "inventory_keeper") && (
-          <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="receive" />
-            <Button
-              type="submit"
-              className="bg-green-600 hover:bg-green-700"
-              onClick={(e) => { if (!confirm("确认入库？将更新库存数量")) e.preventDefault(); }}
-            >
-              <CheckCircle className="size-4" /> 确认入库
-            </Button>
-          </fetcher.Form>
+          <Button
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => setShowReceive(true)}
+          >
+            <CheckCircle className="size-4" /> 确认入库
+          </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showReceive}
+        onOpenChange={setShowReceive}
+        title="确认入库"
+        description={`将为采购单 PO-${String(purchase.id).padStart(4, "0")} 执行入库操作，库存数量将相应增加。`}
+        confirmText="确认入库"
+        variant="default"
+        loading={isReceiving}
+        onConfirm={() => {
+          const fd = new FormData();
+          fd.set("intent", "receive");
+          fetcher.submit(fd, { method: "post" });
+        }}
+      />
     </AppLayout>
   );
 }

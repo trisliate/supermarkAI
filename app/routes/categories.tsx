@@ -1,4 +1,5 @@
 import { Form, useFetcher, useNavigation, useLoaderData } from "react-router";
+import { useState, useEffect, useMemo } from "react";
 import type { Route } from "./+types/categories";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
@@ -8,15 +9,28 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
-import { Plus, Trash2, Tags, Loader2 } from "lucide-react";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import { PageSkeleton } from "~/components/ui/page-skeleton";
+import { Plus, Trash2, Tags, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
+import { DataTablePagination } from "~/components/ui/data-table-pagination";
+
+const PAGE_SIZE = 20;
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
-  const categories = await db.category.findMany({
-    include: { _count: { select: { products: true } } },
-    orderBy: { name: "asc" },
-  });
-  return { user, categories };
+  const url = new URL(request.url);
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+  const [total, categories] = await Promise.all([
+    db.category.count(),
+    db.category.findMany({
+      include: { _count: { select: { products: true } } },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+  ]);
+  return { user, categories, total, page, pageSize: PAGE_SIZE };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -42,20 +56,41 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function CategoriesPage() {
-  const { user, categories } = useLoaderData<typeof loader>();
+  const { user, categories, total, page, pageSize } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const isLoading = navigation.state === "loading" && navigation.location?.pathname === "/categories";
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const isDeleting = fetcher.state !== "idle";
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      if (fetcher.data.error) {
+        toast.error(fetcher.data.error);
+      } else if (fetcher.data.ok && deleteId !== null) {
+        toast.success("分类已删除");
+        setDeleteId(null);
+      }
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  const filtered = useMemo(() => {
+    if (!search) return categories;
+    const q = search.toLowerCase();
+    return categories.filter((c) => c.name.toLowerCase().includes(q) || (c.description && c.description.toLowerCase().includes(q)));
+  }, [categories, search]);
 
   return (
     <AppLayout user={user}>
-      <div className="space-y-6 animate-fade-in">
+      {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
+      <div className="space-y-4 animate-fade-in">
         <div>
           <h2 className="text-2xl font-bold">分类管理</h2>
           <p className="text-sm text-muted-foreground mt-1">管理商品分类</p>
         </div>
 
-        {/* 新增分类表单 */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -82,12 +117,21 @@ export default function CategoriesPage() {
           </CardContent>
         </Card>
 
-        {/* 分类列表 */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+          <Input
+            placeholder="搜索分类名称..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
+                <TableRow>
                   <TableHead className="w-16">ID</TableHead>
                   <TableHead>名称</TableHead>
                   <TableHead>描述</TableHead>
@@ -96,35 +140,30 @@ export default function CategoriesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.length === 0 ? (
+                {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
                       <Tags className="size-8 mx-auto mb-2 opacity-50" />
-                      暂无分类数据
+                      {search ? "没有匹配的分类" : "暂无分类数据"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  categories.map((c) => (
+                  filtered.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-mono text-muted-foreground">{c.id}</TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell className="text-muted-foreground">{c.description || "-"}</TableCell>
                       <TableCell>{c._count.products}</TableCell>
                       <TableCell className="text-right">
-                        <fetcher.Form method="post" className="inline">
-                          <input type="hidden" name="intent" value="delete" />
-                          <input type="hidden" name="id" value={c.id} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            type="submit"
-                            className="text-destructive hover:text-destructive"
-                            onClick={(e) => { if (!confirm("确定删除？")) e.preventDefault(); }}
-                          >
-                            <Trash2 className="size-3.5" />
-                            删除
-                          </Button>
-                        </fetcher.Form>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteId(c.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                          删除
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -133,7 +172,25 @@ export default function CategoriesPage() {
             </Table>
           </CardContent>
         </Card>
+        <DataTablePagination totalPages={Math.ceil(total / pageSize)} currentPage={page} />
       </div>
+      )}
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="删除分类"
+        description="确定要删除该分类吗？此操作不可撤销。"
+        confirmText="删除"
+        loading={isDeleting}
+        onConfirm={() => {
+          if (deleteId === null) return;
+          const fd = new FormData();
+          fd.set("intent", "delete");
+          fd.set("id", String(deleteId));
+          fetcher.submit(fd, { method: "post" });
+        }}
+      />
     </AppLayout>
   );
 }

@@ -8,13 +8,15 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const body = await request.json();
-    const { query } = body;
+    const { query, messages } = body;
 
     if (!query || typeof query !== "string") {
       return Response.json({ error: "请输入问题" }, { status: 400 });
     }
 
-    const result = await processQuery(query);
+    // Pass conversation history if provided (for LLM context)
+    const history = Array.isArray(messages) ? messages.slice(-10) : undefined;
+    const result = await processQuery(query, history);
     return Response.json(result);
   } catch {
     return Response.json({ error: "处理请求时出错" }, { status: 500 });

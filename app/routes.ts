@@ -23,5 +23,7 @@ export default [
   route("inventory/:id", "routes/inventory.$id.tsx"),
   route("sales", "routes/sales.tsx"),
   route("sales/new", "routes/sales.new.tsx"),
+  route("profile", "routes/profile.tsx"),
+  route("settings/ai", "routes/settings.ai.tsx"),
   route("api/assistant", "routes/api.assistant.ts"),
 ] satisfies RouteConfig;

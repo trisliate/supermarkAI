@@ -237,12 +237,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   // ==================== Cashier Data ====================
-  const [todayOrderCount, myTodayOrders, hotProductsGroupBy, recentSalesList, hourlySalesData] = await Promise.all([
+  const [todayOrderCount, myTodayOrders, hotProductsGroupBy, recentSalesList, hourlySalesData, allCashierSales, lowStockInventories] = await Promise.all([
     db.saleOrder.count({ where: { createdAt: { gte: today } } }),
     db.saleOrder.count({ where: { createdAt: { gte: today }, userId: user.id } }),
     db.saleOrderItem.groupBy({ by: ["productId"], _sum: { quantity: true }, orderBy: { _sum: { quantity: "desc" } }, take: 10, where: { saleOrder: { createdAt: { gte: today } } } }),
     db.saleOrder.findMany({ where: { createdAt: { gte: today } }, include: { items: true }, orderBy: { createdAt: "desc" }, take: 5 }),
     db.saleOrder.findMany({ where: { createdAt: { gte: today } }, select: { totalAmount: true, createdAt: true } }),
+    db.saleOrder.findMany({ where: { createdAt: { gte: today } }, include: { user: { select: { name: true } } } }),
+    db.inventory.findMany({ where: { quantity: { lt: 10 } }, include: { product: { select: { name: true, unit: true } } }, orderBy: { quantity: "asc" }, take: 10 }),
   ]);
 
   const hotProductsDetails = await Promise.all(
@@ -271,6 +273,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   const avgOrderValue = todayOrderCount > 0 ? todaySalesAmount / todayOrderCount : 0;
 
+  // Cashier leaderboard
+  const cashierMap = new Map<string, { name: string; salesCount: number; salesAmount: number }>();
+  allCashierSales.forEach((s) => {
+    const name = s.user.name;
+    const existing = cashierMap.get(name) || { name, salesCount: 0, salesAmount: 0 };
+    existing.salesCount++;
+    existing.salesAmount += Number(s.totalAmount);
+    cashierMap.set(name, existing);
+  });
+
   return {
     user,
     role: "cashier" as const,
@@ -290,6 +302,12 @@ export async function loader({ request }: Route.LoaderArgs) {
         createdAt: s.createdAt.toISOString(),
       })),
       cashierName: user.name,
+      allCashierStats: Array.from(cashierMap.values()).sort((a, b) => b.salesAmount - a.salesAmount),
+      lowStockProducts: lowStockInventories.map((inv) => ({
+        name: inv.product.name,
+        stock: inv.quantity,
+        unit: inv.product.unit,
+      })),
     },
   };
 }

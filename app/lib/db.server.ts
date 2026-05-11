@@ -7,6 +7,10 @@ const adapter = new PrismaMariaDb({
   password: "123456",
   database: "supermark",
   port: 3306,
+  connectionLimit: 10,
+  acquireTimeout: 5000,
+  idleTimeout: 30000,
+  minimumIdle: 1,
 });
 
 let db: PrismaClient;

@@ -7,10 +7,10 @@ datasource db {
 }
 
 enum Role {
-  admin             // 管理员/经理
-  purchaser         // 采购员
-  inventory_keeper  // 库存管理员
-  cashier           // 营业员
+  admin             // 店长
+  purchaser         // 采购
+  inventory_keeper  // 理货员
+  cashier           // 收银员
 }
 
 enum ProductStatus {
@@ -151,4 +151,16 @@ model SaleOrderItem {
 
   saleOrder SaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
   product   Product   @relation(fields: [productId], references: [id])
+}
+
+model AIConfig {
+  id           Int      @id @default(autoincrement())
+  provider     String   // dashscope, ernie, glm, moonshot, deepseek
+  apiKey       String   // encrypted
+  model        String
+  baseUrl      String?
+  isActive     Boolean  @default(false)
+  systemPrompt String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

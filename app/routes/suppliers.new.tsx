@@ -1,15 +1,17 @@
-import { Form, redirect, useActionData, useNavigation, Link, useLoaderData } from "react-router";
+import { Form, useActionData, useNavigation, Link, useLoaderData } from "react-router";
 import type { Route } from "./+types/suppliers.new";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { ArrowLeft, Loader2, AlertCircle, Truck } from "lucide-react";
+import { Loader2, AlertCircle, Truck } from "lucide-react";
+import { FormPage } from "~/components/ui/form-page";
+import { FormSection } from "~/components/ui/form-section";
+import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
@@ -27,7 +29,7 @@ export async function action({ request }: Route.ActionArgs) {
   if (!name || !contact || !phone) return { error: "必填字段不能为空" };
 
   await db.supplier.create({ data: { name, contact, phone, address } });
-  throw redirect("/suppliers");
+  throw flashRedirect("/suppliers", { type: "success", message: "供应商创建成功" });
 }
 
 export default function NewSupplierPage() {
@@ -38,51 +40,49 @@ export default function NewSupplierPage() {
 
   return (
     <AppLayout user={user}>
-      <div className="max-w-lg animate-fade-in">
-        <div className="mb-6">
-          <Link to="/suppliers" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-2")}><ArrowLeft className="size-4" /> 返回供应商列表</Link>
-          <h2 className="text-2xl font-bold">新增供应商</h2>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Truck className="size-4" /> 添加新供应商
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form method="post" className="space-y-4">
-              {actionData?.error && (
-                <Alert variant="destructive"><AlertCircle className="size-4" /><AlertDescription>{actionData.error}</AlertDescription></Alert>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="name">供应商名称</Label>
-                <Input id="name" name="name" required placeholder="请输入供应商名称" />
+      <FormPage
+        icon={Truck}
+        title="新增供应商"
+        subtitle="添加新的供应商"
+        actions={
+          <>
+            <Button type="submit" form="supplier-form" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+              {isSubmitting ? "创建中..." : "创建供应商"}
+            </Button>
+            <Link to="/suppliers" className={cn(buttonVariants({ variant: "outline" }))}>取消</Link>
+          </>
+        }
+      >
+        <Form id="supplier-form" method="post" className="space-y-6">
+          {actionData?.error && (
+            <Alert variant="destructive" className="py-2"><AlertCircle className="size-4" /><AlertDescription>{actionData.error}</AlertDescription></Alert>
+          )}
+
+          <FormSection icon={Truck} title="供应商信息">
+            <div className="space-y-2">
+              <Label htmlFor="name">供应商名称</Label>
+              <Input id="name" name="name" required placeholder="请输入供应商名称" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contact">联系人</Label>
+                <Input id="contact" name="contact" required placeholder="联系人姓名" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="contact">联系人</Label>
-                  <Input id="contact" name="contact" required placeholder="联系人姓名" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone">电话</Label>
-                  <Input id="phone" name="phone" required placeholder="联系电话" />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">电话</Label>
+                <Input id="phone" name="phone" required placeholder="联系电话" />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="address">地址</Label>
-                <Input id="address" name="address" placeholder="供应商地址（可选）" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                  {isSubmitting ? "提交中..." : "创建"}
-                </Button>
-                <Link to="/suppliers" className={cn(buttonVariants({ variant: "outline" }))}>取消</Link>
-              </div>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">地址 <span className="text-muted-foreground font-normal">(可选)</span></Label>
+              <Input id="address" name="address" placeholder="供应商地址" />
+            </div>
+          </FormSection>
+        </Form>
+      </FormPage>
     </AppLayout>
   );
 }
