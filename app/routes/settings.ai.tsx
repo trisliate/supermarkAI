@@ -4,6 +4,7 @@ import type { Route } from "./+types/settings.ai";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { encrypt, decrypt } from "~/lib/crypto.server";
+import { AppLayout } from "~/components/layout/app-layout";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -171,6 +172,7 @@ export async function action({ request }: Route.ActionArgs) {
       const decryptedKey = decrypt(config.apiKey);
       const prov = providers.find((p) => p.value === config.provider);
       const baseUrl = config.baseUrl || prov?.baseUrl || "";
+      const start = Date.now();
       const res = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -183,11 +185,14 @@ export async function action({ request }: Route.ActionArgs) {
           max_tokens: 10,
         }),
       });
+      const elapsed = Date.now() - start;
       if (!res.ok) {
         const errText = await res.text();
         return { error: `连接失败 (${res.status}): ${errText.slice(0, 100)}` };
       }
-      return { ok: true, intent: "test" };
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || "";
+      return { ok: true, intent: "test", elapsed, reply: reply.slice(0, 50) };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       return { error: `连接错误: ${message}` };
@@ -198,7 +203,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
-  const { configs } = loaderData;
+  const { user, configs } = loaderData;
   const fetcher = useFetcher();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -241,6 +246,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
   const editingConfig = editId ? configs.find((c) => c.id === editId) : null;
 
   return (
+    <AppLayout user={user}>
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -512,5 +518,6 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
         .animate-fade-in { animation: fade-in 0.4s ease-out both; }
       ` }} />
     </div>
+    </AppLayout>
   );
 }

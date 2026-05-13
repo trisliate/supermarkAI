@@ -17,6 +17,7 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
   pending: { label: "待审批", variant: "outline" },
   approved: { label: "已审批", variant: "default" },
   received: { label: "已入库", variant: "secondary" },
+  rejected: { label: "已驳回", variant: "destructive" },
   cancelled: { label: "已取消", variant: "destructive" },
 };
 

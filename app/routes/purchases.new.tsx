@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import type { Route } from "./+types/purchases.new";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
+import { AppLayout } from "~/components/layout/app-layout";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn, formatPrice } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
@@ -139,6 +140,7 @@ export default function NewPurchasePage() {
   const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
   return (
+    <AppLayout user={user}>
     <div className="animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
@@ -340,5 +342,6 @@ export default function NewPurchasePage() {
         .animate-fade-in { animation: fade-in 0.4s ease-out both; }
       ` }} />
     </div>
+    </AppLayout>
   );
 }

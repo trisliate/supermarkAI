@@ -3,8 +3,7 @@ import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
 import {
   LayoutDashboard, Users, Package, Tags, Truck,
-  ShoppingCart, Warehouse, Receipt, Store,
-  AlertTriangle, Bot,
+  ShoppingCart, Warehouse, Receipt, Store, Bot,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -50,7 +49,6 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "采购管理", href: "/purchases", roles: ["admin", "purchaser"], icon: ShoppingCart },
       { label: "库存管理", href: "/inventory", roles: ["admin", "inventory_keeper"], icon: Warehouse },
-      { label: "库存预警", href: "/inventory", roles: ["inventory_keeper"], icon: AlertTriangle },
     ],
   },
   {
@@ -88,16 +86,17 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       collapsible="icon"
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-4">
+      {/* Header: logo stays fixed, text fades out */}
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-2">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-xl flex items-center justify-center shrink-0 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8">
             <Store className="w-5 h-5 text-white dark:text-slate-900" />
           </div>
-          <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight truncate">超市管理系统</h2>
+          <div className="min-w-0 flex-1 overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight truncate whitespace-nowrap">超市管理系统</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className={`w-1.5 h-1.5 rounded-full ${roleDotColors[user.role]}`} />
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user.name} · {roleLabels[user.role]}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate whitespace-nowrap">{user.name} · {roleLabels[user.role]}</span>
             </div>
           </div>
         </div>
@@ -109,14 +108,14 @@ export function AppSidebar({ user }: { user: AuthUser }) {
           if (filteredItems.length === 0) return null;
 
           return (
-            <SidebarGroup key={gi}>
+            <SidebarGroup key={gi} className="group-data-[collapsible=icon]:p-0">
               {group.label && (
                 <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 mb-1">
                   {group.label}
                 </SidebarGroupLabel>
               )}
               <SidebarGroupContent>
-                <SidebarMenu>
+                <SidebarMenu className="group-data-[collapsible=icon]:px-1">
                   {filteredItems.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
@@ -127,7 +126,7 @@ export function AppSidebar({ user }: { user: AuthUser }) {
                           render={<button type="button" onClick={(e) => { e.stopPropagation(); navigate(item.href); }} />}
                           isActive={active}
                           tooltip={item.label}
-                          className="gap-3 h-9 rounded-xl text-[13px] cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
+                          className="gap-3 h-9 rounded-xl text-[13px] cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400 group-data-[collapsible=icon]:after:absolute group-data-[collapsible=icon]:after:-inset-y-1.5 group-data-[collapsible=icon]:after:-inset-x-1 group-data-[collapsible=icon]:after:rounded-lg group-data-[collapsible=icon]:after:z-10"
                         >
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
