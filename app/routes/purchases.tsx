@@ -118,9 +118,14 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
       {isLoading ? <PageSkeleton columns={3} rows={6} /> : (
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">采购管理</h2>
-            <p className="text-sm text-muted-foreground mt-1">管理采购订单</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">采购管理</h2>
+              <p className="text-xs text-muted-foreground">管理采购订单</p>
+            </div>
           </div>
           <Link to="/purchases/new" className={cn(buttonVariants({}))}>
             <Plus className="size-4" />

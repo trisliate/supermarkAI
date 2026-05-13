@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import {
   ShoppingCart, DollarSign, Truck, AlertTriangle,
-  ArrowRight, Phone, Zap,
+  ArrowRight, Phone, Zap, Package,
 } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
@@ -81,47 +81,55 @@ export function PurchaserDashboard({
               <Badge variant="destructive" className="text-[10px]">{urgentItems.length} 项需关注</Badge>
             )}
           </div>
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/80 z-10">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">商品</th>
-                  <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">库存</th>
-                  <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">日均销量</th>
-                  <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">可售天数</th>
-                  <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">建议采购</th>
-                  <th className="text-center px-4 py-2 font-medium text-slate-500 text-xs">紧急程度</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {restockItems.slice(0, 15).map((item) => (
-                  <tr key={item.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-6 rounded-full ${urgencyStyles[item.urgency]}`} />
-                        <span className="font-medium text-slate-700 dark:text-slate-200 text-[13px]">{item.productName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono text-[13px]">{item.currentStock} {item.unit}</td>
-                    <td className="px-4 py-2 text-right font-mono text-slate-500 text-[13px]">{item.dailySales}</td>
-                    <td className="px-4 py-2 text-right font-mono text-[13px]">
-                      <span className={item.daysOfStock < 3 ? "text-red-600 font-semibold" : item.daysOfStock < 7 ? "text-orange-500" : "text-slate-500"}>
-                        {item.daysOfStock >= 9999 ? "∞" : `${item.daysOfStock}天`}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono font-semibold text-[13px]">
-                      {item.suggestedQty > 0 ? `${item.suggestedQty} ${item.unit}` : "-"}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${item.urgency === "critical" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : item.urgency === "urgent" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : item.urgency === "watch" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}>
-                        {item.urgencyLabel}
-                      </span>
-                    </td>
+          {restockItems.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+              <Package className="w-8 h-8 mb-2 opacity-50" />
+              <p className="text-sm font-medium">所有商品库存充足</p>
+              <p className="text-xs mt-1">暂无需要补货的商品</p>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800/80 z-10">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-medium text-slate-500 text-xs">商品</th>
+                    <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">库存</th>
+                    <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">日均销量</th>
+                    <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">可售天数</th>
+                    <th className="text-right px-4 py-2 font-medium text-slate-500 text-xs">建议采购</th>
+                    <th className="text-center px-4 py-2 font-medium text-slate-500 text-xs">紧急程度</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {restockItems.slice(0, 15).map((item) => (
+                    <tr key={item.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-1.5 h-6 rounded-full ${urgencyStyles[item.urgency]}`} />
+                          <span className="font-medium text-slate-700 dark:text-slate-200 text-[13px]">{item.productName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono text-[13px]">{item.currentStock} {item.unit}</td>
+                      <td className="px-4 py-2 text-right font-mono text-slate-500 text-[13px]">{item.dailySales}</td>
+                      <td className="px-4 py-2 text-right font-mono text-[13px]">
+                        <span className={item.daysOfStock < 3 ? "text-red-600 font-semibold" : item.daysOfStock < 7 ? "text-orange-500" : "text-slate-500"}>
+                          {item.daysOfStock >= 9999 ? "∞" : `${item.daysOfStock}天`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right font-mono font-semibold text-[13px]">
+                        {item.suggestedQty > 0 ? `${item.suggestedQty} ${item.unit}` : "-"}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-medium ${item.urgency === "critical" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : item.urgency === "urgent" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : item.urgency === "watch" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}>
+                          {item.urgencyLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Right side panels — 4 cols */}
@@ -136,61 +144,65 @@ export function PurchaserDashboard({
           </Link>
 
           {/* Suppliers */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-cyan-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">供应商速联</span>
-              </div>
-              <Link to="/suppliers" className="text-xs text-blue-500 hover:text-blue-600">管理</Link>
-            </div>
-            <div className="space-y-2">
-              {suppliers.slice(0, 5).map((s) => (
-                <div key={s.id} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{s.name}</p>
-                    <p className="text-[10px] text-slate-400">{s.contact}</p>
-                  </div>
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 shrink-0">
-                    <Phone className="w-3 h-3" /> {s.phone}
-                  </div>
+          {suppliers.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-cyan-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">供应商速联</span>
                 </div>
-              ))}
+                <Link to="/suppliers" className="text-xs text-blue-500 hover:text-blue-600">管理</Link>
+              </div>
+              <div className="space-y-2">
+                {suppliers.slice(0, 5).map((s) => (
+                  <div key={s.id} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{s.name}</p>
+                      <p className="text-[10px] text-slate-400">{s.contact}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] text-slate-500 shrink-0">
+                      <Phone className="w-3 h-3" /> {s.phone}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Recent purchases */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近采购单</span>
-              </div>
-              <Link to="/purchases" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
-                全部 <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {recentPurchases.slice(0, 5).map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/purchases/${p.id}`}
-                  className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200">PO-{String(p.id).padStart(4, "0")}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{p.supplier}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">¥{formatPrice(p.amount)}</p>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${statusColors[p.status]}`}>
-                      {statusLabels[p.status]}
-                    </span>
-                  </div>
+          {recentPurchases.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近采购单</span>
+                </div>
+                <Link to="/purchases" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
+                  全部 <ArrowRight className="w-3 h-3" />
                 </Link>
-              ))}
+              </div>
+              <div className="space-y-2">
+                {recentPurchases.slice(0, 5).map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/purchases/${p.id}`}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200">PO-{String(p.id).padStart(4, "0")}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{p.supplier}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">¥{formatPrice(p.amount)}</p>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${statusColors[p.status]}`}>
+                        {statusLabels[p.status]}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

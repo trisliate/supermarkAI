@@ -7,7 +7,10 @@
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(npm run *)",
       "Bash(npm install *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:qwen.ai)",
+      "Bash(gh api *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\80900\\.claude\\plans"

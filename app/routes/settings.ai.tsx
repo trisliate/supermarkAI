@@ -8,95 +8,55 @@ import { AppLayout } from "~/components/layout/app-layout";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Badge } from "~/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
-import { Plus, Trash2, Loader2, Zap, Settings, CheckCircle, ExternalLink } from "lucide-react";
+import { Loader2, Zap, CheckCircle, ExternalLink, Trash2, Pencil, Plus, Eye, EyeOff, Sparkles } from "lucide-react";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { toast } from "sonner";
 
-interface Provider {
+interface ProviderDef {
   value: string;
   label: string;
-  color: string;
-  bgColor: string;
-  models: string[];
+  logo: string;
   baseUrl: string;
+  models: string[];
+  color: string;
   website: string;
-  logo: React.ReactNode;
+  description: string;
 }
 
-const providers: Provider[] = [
+const providers: ProviderDef[] = [
   {
-    value: "dashscope", label: "通义千问", color: "text-violet-600", bgColor: "bg-violet-100 dark:bg-violet-900/30",
-    models: ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long", "qwen2.5-72b-instruct"],
-    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", website: "https://dashscope.aliyun.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#6d28d9"/><path d="M8 8l4 8 4-8" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="3" fill="#fff" fillOpacity="0.3"/></svg>,
+    value: "deepseek",
+    label: "DeepSeek",
+    logo: "https://s1.aigei.com/src/img/png/03/0305d15156154b85a80848ae4edd22ab.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:eFZ0GvEP17SkCu1zdapd0tTtlTw=",
+    baseUrl: "https://api.deepseek.com/v1",
+    models: ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"],
+    color: "#2563eb",
+    website: "https://platform.deepseek.com",
+    description: "深度求索 · 高性价比推理模型",
   },
   {
-    value: "deepseek", label: "DeepSeek", color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    models: ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"],
-    baseUrl: "https://api.deepseek.com/v1", website: "https://platform.deepseek.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#2563eb"/><path d="M7 12h10M12 7v10" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="12" r="3" fill="#fff" fillOpacity="0.25"/></svg>,
+    value: "mimo",
+    label: "MiMo",
+    logo: "https://tse1-mm.cn.bing.net/th/id/OIP-C.exWGUuviU0ymMhb1OBiUNwHaD4?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3",
+    baseUrl: "https://token-plan-sgp.xiaomimimo.com/anthropic",
+    models: ["mimo-2.5", "mimo-2.5-pro"],
+    color: "#ff6900",
+    website: "https://github.com/XiaomiMiMo/MiMo",
+    description: "小米 MiMo · 轻量高效",
   },
   {
-    value: "glm", label: "智谱清言", color: "text-cyan-600", bgColor: "bg-cyan-100 dark:bg-cyan-900/30",
-    models: ["glm-4-flash", "glm-4", "glm-4v", "glm-4-long"],
-    baseUrl: "https://open.bigmodel.cn/api/paas/v4", website: "https://open.bigmodel.cn",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#0891b2"/><path d="M8 12a4 4 0 018 0" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="10" r="2" fill="#fff"/></svg>,
-  },
-  {
-    value: "moonshot", label: "月之暗面", color: "text-slate-600", bgColor: "bg-slate-100 dark:bg-slate-800",
-    models: ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"],
-    baseUrl: "https://api.moonshot.cn/v1", website: "https://platform.moonshot.cn",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#1e293b"/><path d="M15 9a5 5 0 01-5 5" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><circle cx="10" cy="10" r="4" fill="#fff" fillOpacity="0.15"/></svg>,
-  },
-  {
-    value: "ernie", label: "文心一言", color: "text-red-600", bgColor: "bg-red-100 dark:bg-red-900/30",
-    models: ["ernie-speed", "ernie-lite", "ernie-4.0-8k", "ernie-4.0-turbo-8k"],
-    baseUrl: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat", website: "https://cloud.baidu.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#dc2626"/><path d="M8 8c2 2 2 6 0 8M16 8c-2 2-2 6 0 8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>,
-  },
-  {
-    value: "doubao", label: "豆包", color: "text-emerald-600", bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-    models: ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-128k", "doubao-lite-128k"],
-    baseUrl: "https://ark.cn-beijing.volces.com/api/v3", website: "https://console.volcengine.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#059669"/><circle cx="12" cy="10" r="4" fill="#fff"/><path d="M8 15c1 1 3 2 4 2s3-1 4-2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg>,
-  },
-  {
-    value: "hunyuan", label: "腾讯混元", color: "text-sky-600", bgColor: "bg-sky-100 dark:bg-sky-900/30",
-    models: ["hunyuan-turbos-latest", "hunyuan-pro", "hunyuan-standard"],
-    baseUrl: "https://api.hunyuan.cloud.tencent.com/v1", website: "https://cloud.tencent.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#0284c7"/><path d="M12 6v12M6 12h12" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="12" r="4" fill="#fff" fillOpacity="0.2"/></svg>,
-  },
-  {
-    value: "yi", label: "零一万物", color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900/30",
-    models: ["yi-lightning", "yi-large", "yi-medium", "yi-spark"],
-    baseUrl: "https://api.lingyiwanwu.com/v1", website: "https://platform.lingyiwanwu.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#ea580c"/><path d="M12 6l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z" fill="#fff"/></svg>,
-  },
-  {
-    value: "minimax", label: "MiniMax", color: "text-pink-600", bgColor: "bg-pink-100 dark:bg-pink-900/30",
-    models: ["abab6.5s-chat", "abab6.5-chat", "abab6.5g-chat"],
-    baseUrl: "https://api.minimax.chat/v1", website: "https://platform.minimaxi.com",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#db2777"/><rect x="7" y="9" width="3" height="6" rx="1" fill="#fff"/><rect x="14" y="9" width="3" height="6" rx="1" fill="#fff"/></svg>,
-  },
-  {
-    value: "spark", label: "讯飞星火", color: "text-amber-600", bgColor: "bg-amber-100 dark:bg-amber-900/30",
-    models: ["spark-lite", "spark-pro", "spark-max", "spark-4.0-ultra"],
-    baseUrl: "https://spark-api-open.xf-yun.com/v1", website: "https://xinghuo.xfyun.cn",
-    logo: <svg viewBox="0 0 24 24" fill="none" className="w-full h-full p-1.5"><circle cx="12" cy="12" r="10" fill="#d97706"/><path d="M12 6v3M12 15v3M6 12h3M15 12h3" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="12" r="2.5" fill="#fff"/></svg>,
+    value: "qwen",
+    label: "通义千问",
+    logo: "https://freepnglogo.com/images/all_img/qwen-logo-a639.png",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    models: ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
+    color: "#7c3aed",
+    website: "https://dashscope.console.aliyun.com",
+    description: "阿里通义 · 多模态大模型",
   },
 ];
-
-function ProviderLogo({ provider, size = "md" }: { provider: Provider; size?: "sm" | "md" | "lg" }) {
-  const sizeClasses = { sm: "w-7 h-7", md: "w-10 h-10", lg: "w-12 h-12" };
-  return (
-    <div className={`${sizeClasses[size]} rounded-xl overflow-hidden shrink-0`}>
-      {provider.logo}
-    </div>
-  );
-}
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
@@ -104,12 +64,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   const masked = configs.map((c) => ({
     ...c,
     apiKey: "••••••••" + c.apiKey.slice(-8),
+    lastTestedAt: c.lastTestedAt?.toISOString() ?? null,
+    lastTestMs: c.lastTestMs,
   }));
   return { user, configs: masked };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const user = await requireRole(request, ["admin"]);
+  await requireRole(request, ["admin"]);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
 
@@ -119,6 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
     const model = formData.get("model") as string;
     const apiKeyRaw = formData.get("apiKey") as string;
     const systemPrompt = formData.get("systemPrompt") as string;
+    const baseUrl = formData.get("baseUrl") as string;
 
     if (!provider || !model || (!apiKeyRaw && !id)) {
       return { error: "请填写所有必填字段" };
@@ -134,17 +97,14 @@ export async function action({ request }: Route.ActionArgs) {
       apiKey = encrypt(apiKeyRaw);
     }
 
-    const prov = providers.find((p) => p.value === provider);
-    const baseUrl = prov?.baseUrl || null;
-
     if (id) {
       await db.aIConfig.update({
         where: { id },
-        data: { provider, model, apiKey, baseUrl, systemPrompt: systemPrompt || null },
+        data: { provider, model, apiKey, baseUrl: baseUrl || null, systemPrompt: systemPrompt || null },
       });
     } else {
       await db.aIConfig.create({
-        data: { provider, model, apiKey, baseUrl, systemPrompt: systemPrompt || null },
+        data: { provider, model, apiKey, baseUrl: baseUrl || null, systemPrompt: systemPrompt || null },
       });
     }
     return { ok: true, intent };
@@ -152,9 +112,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "activate") {
     const id = Number(formData.get("id"));
+    const config = await db.aIConfig.findUnique({ where: { id } });
+    if (!config) return { error: "配置不存在", intent: "activate" };
+    if (!config.lastTestedAt) return { error: "请先测试连接成功后再启用", intent: "activate" };
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    if (config.lastTestedAt < thirtyMinAgo) return { error: "测试已过期，请重新测试连接", intent: "activate" };
     await db.aIConfig.updateMany({ data: { isActive: false } });
     await db.aIConfig.update({ where: { id }, data: { isActive: true } });
-    return { ok: true, intent };
+    return { ok: true, intent: "activate" };
   }
 
   if (intent === "delete") {
@@ -170,8 +135,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     try {
       const decryptedKey = decrypt(config.apiKey);
-      const prov = providers.find((p) => p.value === config.provider);
-      const baseUrl = config.baseUrl || prov?.baseUrl || "";
+      const baseUrl = config.baseUrl || providers.find((p) => p.value === config.provider)?.baseUrl || "";
       const start = Date.now();
       const res = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
@@ -192,6 +156,7 @@ export async function action({ request }: Route.ActionArgs) {
       }
       const data = await res.json();
       const reply = data.choices?.[0]?.message?.content || "";
+      await db.aIConfig.update({ where: { id }, data: { lastTestedAt: new Date(), lastTestMs: elapsed } });
       return { ok: true, intent: "test", elapsed, reply: reply.slice(0, 50) };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -205,10 +170,11 @@ export async function action({ request }: Route.ActionArgs) {
 export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
   const { user, configs } = loaderData;
   const fetcher = useFetcher();
-  const [showForm, setShowForm] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState("dashscope");
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const isSaving = fetcher.state !== "idle";
 
   useEffect(() => {
@@ -217,137 +183,127 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
         toast.error(fetcher.data.error);
       } else if (fetcher.data.ok) {
         if (fetcher.data.intent === "test") {
-          toast.success("连接测试成功！");
+          const ms = fetcher.data.elapsed;
+          const reply = fetcher.data.reply;
+          toast.success(`连接成功 · ${ms}ms${reply ? ` · "${reply}"` : ""}`);
         } else if (fetcher.data.intent === "delete") {
           toast.success("配置已删除");
           setDeleteId(null);
         } else {
           toast.success(editId ? "配置已更新" : "配置已创建");
-          setShowForm(false);
           setEditId(null);
+          setShowNewForm(false);
         }
       }
     }
   }, [fetcher.state, fetcher.data, editId]);
 
-  const handleEdit = (config: typeof configs[0]) => {
-    setEditId(config.id);
-    setSelectedProvider(config.provider);
-    setShowForm(true);
-  };
+  const activeConfig = configs.find((c) => c.isActive);
+  const getProviderConfigs = (provider: string) => configs.filter((c) => c.provider === provider);
+  const getProviderDef = (value: string) => providers.find((p) => p.value === value);
 
-  const handleNew = () => {
-    setEditId(null);
-    setSelectedProvider("dashscope");
-    setShowForm(true);
-  };
-
-  const currentProvider = providers.find((p) => p.value === selectedProvider);
   const editingConfig = editId ? configs.find((c) => c.id === editId) : null;
 
   return (
     <AppLayout user={user}>
     <div className="animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-            <Settings className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI 设置</h2>
-            <p className="text-xs text-muted-foreground">配置 AI 助手的模型和 API Key</p>
-          </div>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-primary" />
         </div>
-        {!showForm && (
-          <Button onClick={handleNew} size="sm">
-            <Plus className="size-4" /> 添加配置
-          </Button>
-        )}
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI 设置</h2>
+          <p className="text-xs text-muted-foreground">配置 AI 模型供应商和 API Key，为智能助手提供能力</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left: provider list + info */}
-        <div className="xl:col-span-1 space-y-4">
-          {/* Available providers */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">支持的模型供应商</h3>
-            <div className="space-y-2">
-              {providers.map((p) => {
-                const hasConfig = configs.some((c) => c.provider === p.value);
-                return (
-                  <div key={p.value} className="flex items-center gap-3 py-1.5">
-                    <ProviderLogo provider={p} size="sm" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{p.label}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{p.models.slice(0, 3).join(", ")}{p.models.length > 3 ? "..." : ""}</p>
-                    </div>
-                    {hasConfig && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+      {/* Provider cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {providers.map((p) => {
+          const pConfigs = getProviderConfigs(p.value);
+          const hasActive = pConfigs.some((c) => c.isActive);
+          const isSelected = activeProvider === p.value || (!activeProvider && editingConfig?.provider === p.value);
 
-          {/* Active config */}
-          {configs.some((c) => c.isActive) && (
-            <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4 text-emerald-600" />
-                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">当前启用</span>
+          return (
+            <button
+              key={p.value}
+              onClick={() => { setActiveProvider(p.value); setEditId(null); setShowNewForm(false); }}
+              className={`relative bg-white dark:bg-slate-900 rounded-xl border-2 p-4 text-left transition-all hover:shadow-md ${
+                isSelected
+                  ? "border-primary shadow-sm"
+                  : "border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
+              }`}
+            >
+              {/* Status dot */}
+              <div className={`absolute top-3 right-3 w-2.5 h-2.5 rounded-full ${
+                hasActive ? "bg-emerald-500" : pConfigs.length > 0 ? "bg-amber-400" : "bg-slate-300 dark:bg-slate-600"
+              }`} />
+
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                  <img
+                    src={p.logo}
+                    alt={p.label}
+                    className="w-8 h-8 object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-white">{p.label}</h3>
+                  <p className="text-[10px] text-slate-400">{p.description}</p>
+                </div>
               </div>
-              {configs.filter((c) => c.isActive).map((c) => {
-                const prov = providers.find((p) => p.value === c.provider);
-                return (
-                  <div key={c.id} className="flex items-center gap-2">
-                    {prov && <ProviderLogo provider={prov} size="sm" />}
-                    <div>
-                      <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">{prov?.label || c.provider}</p>
-                      <p className="text-xs text-emerald-600 dark:text-emerald-400">{c.model}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-[10px] text-slate-400">
+                  {pConfigs.length > 0 ? `${pConfigs.length} 个配置` : "未配置"}
+                </span>
+                {hasActive && (
+                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">· 使用中</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Right: configs + form */}
-        <div className="xl:col-span-2 space-y-4">
-          {/* Config cards grid */}
-          {configs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {configs.map((config) => {
-                const prov = providers.find((p) => p.value === config.provider);
-                return (
+      {/* Active provider section */}
+      {activeProvider && (() => {
+        const pDef = getProviderDef(activeProvider)!;
+        const pConfigs = getProviderConfigs(activeProvider);
+        const isEditing = editId !== null || showNewForm;
+
+        return (
+          <div className="space-y-4 animate-fade-in">
+            {/* Existing configs */}
+            {pConfigs.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pConfigs.map((config) => (
                   <div
                     key={config.id}
                     className={`bg-white dark:bg-slate-900 rounded-xl border p-4 transition-all ${
                       config.isActive
                         ? "border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-200 dark:ring-emerald-800"
-                        : "border-slate-200/80 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
+                        : "border-slate-200/80 dark:border-slate-800/80"
                     }`}
                   >
-                    <div className="flex items-start gap-3 mb-3">
-                      {prov && <ProviderLogo provider={prov} />}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                            {prov?.label || config.provider}
-                          </span>
-                          {config.isActive && (
-                            <Badge className="text-[10px] bg-emerald-500">使用中</Badge>
-                          )}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-md overflow-hidden bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                          <img src={pDef.logo} alt="" className="w-5 h-5 object-contain" />
                         </div>
-                        <Badge variant="outline" className="text-[10px] mt-1">{config.model}</Badge>
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{config.model}</span>
+                        {config.isActive && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                            使用中
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-400 font-mono mb-3 truncate">{config.apiKey}</p>
+                    <p className="text-[11px] text-slate-400 font-mono mb-3">{config.apiKey}</p>
 
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5">
                       {!config.isActive && (
                         <fetcher.Form method="post">
                           <input type="hidden" name="intent" value="activate" />
@@ -357,14 +313,14 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
                           </Button>
                         </fetcher.Form>
                       )}
-                      <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => handleEdit(config)}>
-                        编辑
+                      <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => { setEditId(config.id); setShowNewForm(false); }}>
+                        <Pencil className="size-3" /> 编辑
                       </Button>
                       <fetcher.Form method="post">
                         <input type="hidden" name="intent" value="test" />
                         <input type="hidden" name="id" value={config.id} />
                         <Button type="submit" variant="outline" size="sm" className="h-7 text-[11px]" disabled={isSaving}>
-                          <Zap className="size-3" /> 测试
+                          <Zap className="size-3" /> 测速
                         </Button>
                       </fetcher.Form>
                       <Button
@@ -377,121 +333,136 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
                       </Button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {/* Empty state */}
-          {configs.length === 0 && !showForm && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-8 text-center">
-              <Settings className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-sm text-slate-500 dark:text-slate-400">尚未配置 AI 模型</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">点击右上角按钮添加模型配置</p>
-            </div>
-          )}
+            {/* Add new config button */}
+            {!isEditing && (
+              <button
+                onClick={() => { setShowNewForm(true); setEditId(null); }}
+                className="w-full bg-white dark:bg-slate-900 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-5 flex items-center justify-center gap-2 text-sm text-slate-400 hover:text-primary hover:border-primary/40 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                添加 {pDef.label} 配置
+              </button>
+            )}
 
-          {/* Add / Edit form */}
-          {showForm && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-5">
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-4">
-                {editId ? "编辑配置" : "添加新配置"}
-              </h3>
-              <fetcher.Form method="post" className="space-y-4">
-                <input type="hidden" name="intent" value={editId ? "update" : "create"} />
-                {editId && <input type="hidden" name="id" value={editId} />}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>供应商</Label>
-                    <Select name="provider" value={selectedProvider} onValueChange={(v) => { if (v) setSelectedProvider(v); }}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          {currentProvider && (
-                            <div className="flex items-center gap-2">
-                              <ProviderLogo provider={currentProvider} size="sm" />
-                              <span>{currentProvider.label}</span>
-                            </div>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {providers.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            <div className="flex items-center gap-2">
-                              <ProviderLogo provider={p} size="sm" />
-                              <span>{p.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {/* Config form */}
+            {isEditing && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                    <img src={pDef.logo} alt="" className="w-6 h-6 object-contain" />
                   </div>
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {editId ? "编辑配置" : `添加 ${pDef.label} 配置`}
+                  </h3>
+                </div>
+                <fetcher.Form method="post" className="space-y-4 max-w-lg">
+                  <input type="hidden" name="intent" value={editId ? "update" : "create"} />
+                  {editId && <input type="hidden" name="id" value={editId} />}
+                  <input type="hidden" name="provider" value={activeProvider} />
+                  <input type="hidden" name="baseUrl" value={pDef.baseUrl} />
+
                   <div className="space-y-2">
                     <Label>模型</Label>
-                    <Select name="model" defaultValue={editingConfig?.model || currentProvider?.models[0]}>
+                    <Select name="model" defaultValue={editingConfig?.model || pDef.models[0]}>
                       <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {currentProvider?.models.map((m) => (
+                        {pDef.models.map((m) => (
                           <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>API Key</Label>
-                  <Input
-                    name="apiKey"
-                    type="password"
-                    placeholder={editId ? "留空保持不变" : "输入 API Key"}
-                    className="font-mono text-sm"
-                    defaultValue={editId ? configs.find((c) => c.id === editId)?.apiKey : ""}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label>API Key</Label>
+                    <div className="relative">
+                      <Input
+                        name="apiKey"
+                        type={showApiKey ? "text" : "password"}
+                        placeholder={editId ? "留空保持不变" : `输入 ${pDef.label} API Key`}
+                        className="font-mono text-sm pr-10"
+                        defaultValue={editId ? configs.find((c) => c.id === editId)?.apiKey : ""}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                      >
+                        {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>系统提示词 <span className="text-muted-foreground">(可选)</span></Label>
-                  <Textarea
-                    name="systemPrompt"
-                    placeholder="自定义 AI 助手的行为和角色..."
-                    className="min-h-[80px] text-sm"
-                    defaultValue={editingConfig?.systemPrompt || ""}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label>系统提示词 <span className="text-muted-foreground">(可选)</span></Label>
+                    <Textarea
+                      name="systemPrompt"
+                      placeholder="自定义 AI 助手的行为和角色..."
+                      className="min-h-[80px] text-sm"
+                      defaultValue={editingConfig?.systemPrompt || ""}
+                    />
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
-                    {editId ? "更新配置" : "添加配置"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => { setShowForm(false); setEditId(null); }}>
-                    取消
-                  </Button>
-                  {currentProvider && (
+                  <div className="flex gap-2">
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
+                      {editId ? "更新配置" : "添加配置"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => { setEditId(null); setShowNewForm(false); }}>
+                      取消
+                    </Button>
                     <a
-                      href={currentProvider.website}
+                      href={pDef.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto flex items-center gap-1 text-xs text-slate-400 hover:text-blue-500 transition-colors"
+                      className="ml-auto flex items-center gap-1 text-xs text-slate-400 hover:text-primary transition-colors"
                     >
-                      前往 {currentProvider.label} <ExternalLink className="w-3 h-3" />
+                      前往 {pDef.label} <ExternalLink className="w-3 h-3" />
                     </a>
-                  )}
-                </div>
-              </fetcher.Form>
-            </div>
-          )}
+                  </div>
+                </fetcher.Form>
+              </div>
+            )}
 
-          {/* Info */}
-          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
-            <p className="text-xs text-blue-600/70 dark:text-blue-400/50">
-              需要在环境变量中设置 ENCRYPTION_KEY (32字节) 用于加密 API Key。所有供应商均兼容 OpenAI API 格式。
+            {/* Provider info */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white dark:bg-slate-700 flex items-center justify-center shrink-0">
+                <img src={pDef.logo} alt="" className="w-6 h-6 object-contain" />
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                <p className="font-medium text-slate-700 dark:text-slate-300">{pDef.label}</p>
+                <p>Base URL: <code className="text-[11px] bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">{pDef.baseUrl}</code></p>
+                <p>支持模型: {pDef.models.join(", ")}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* No provider selected */}
+      {!activeProvider && !editingConfig && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-8 text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">点击上方供应商卡片开始配置</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">所有 API Key 均经过 AES-256 加密存储</p>
+        </div>
+      )}
+
+      {/* Global active indicator */}
+      {activeConfig && (
+        <div className="mt-6 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-800 p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              当前激活: {getProviderDef(activeConfig.provider)?.label || activeConfig.provider} · {activeConfig.model}
             </p>
+            <p className="text-xs text-emerald-600/70 dark:text-emerald-400/50">AI 助手将使用此配置响应请求</p>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Delete confirmation */}
       <ConfirmDialog
@@ -515,7 +486,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in { animation: fade-in 0.4s ease-out both; }
+        .animate-fade-in { animation: fade-in 0.3s ease-out both; }
       ` }} />
     </div>
     </AppLayout>

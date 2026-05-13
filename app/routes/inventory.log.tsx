@@ -40,9 +40,14 @@ export default function InventoryLogPage({ loaderData }: Route.ComponentProps) {
     <AppLayout user={user}>
       <div className="space-y-4 animate-fade-in">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">出入库记录</h2>
-            <p className="text-sm text-muted-foreground mt-1">最近 100 条出入库操作记录</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <History className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">出入库记录</h2>
+              <p className="text-xs text-muted-foreground">最近 100 条出入库操作记录</p>
+            </div>
           </div>
           <Link to="/inventory" className={cn(buttonVariants({ variant: "outline" }))}>
             <ArrowLeft className="size-4" />

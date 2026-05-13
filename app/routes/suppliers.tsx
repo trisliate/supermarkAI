@@ -15,7 +15,7 @@ import { PageSkeleton } from "~/components/ui/page-skeleton";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
-import { Plus, Pencil, Trash2, Truck, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Truck, Search, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
 
@@ -27,7 +27,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, suppliers] = await Promise.all([
     db.supplier.count(),
-    db.supplier.findMany({ orderBy: { name: "asc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    db.supplier.findMany({
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { _count: { select: { supplierProducts: true } } },
+    }),
   ]);
   return { user, suppliers, total, page, pageSize: PAGE_SIZE };
 }
@@ -154,6 +159,7 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
                   <TableHead>联系人</TableHead>
                   <TableHead>电话</TableHead>
                   <TableHead>地址</TableHead>
+                  <TableHead>货物</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -161,7 +167,7 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                       <Truck className="size-8 mx-auto mb-2 opacity-50" />
                       {search || statusFilter !== "all" ? "没有匹配的供应商" : "暂无供应商数据"}
                     </TableCell>
@@ -174,6 +180,16 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
                       <TableCell>{s.contact}</TableCell>
                       <TableCell>{s.phone}</TableCell>
                       <TableCell className="text-muted-foreground">{s.address || "-"}</TableCell>
+                      <TableCell>
+                        {s._count.supplierProducts > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs">
+                            <Package className="size-3 text-slate-400" />
+                            {s._count.supplierProducts}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={s.status === "active" ? "default" : "secondary"}>
                           {s.status === "active" ? "合作中" : "已停用"}

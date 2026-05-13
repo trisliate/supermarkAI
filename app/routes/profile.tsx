@@ -9,6 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
+import { AvatarUpload } from "~/components/ui/avatar-upload";
 import { User, Lock, Loader2, CheckCircle } from "lucide-react";
 import { FormPage } from "~/components/ui/form-page";
 import { FormSection } from "~/components/ui/form-section";
@@ -26,9 +27,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const fullUser = await db.user.findUnique({
     where: { id: user.id },
-    select: { id: true, username: true, name: true, role: true, createdAt: true },
+    select: { id: true, username: true, name: true, role: true, createdAt: true, avatar: true },
   });
-  return { user, fullUser };
+  return { user, fullUser: fullUser ? { ...fullUser, hasAvatar: fullUser.avatar !== null } : null };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -63,6 +64,20 @@ export async function action({ request }: Route.ActionArgs) {
     return { ok: true, intent: "changePassword" };
   }
 
+  if (intent === "updateAvatar") {
+    const dataUrl = formData.get("avatar") as string;
+    if (!dataUrl || !dataUrl.startsWith("data:image/")) return { error: "无效的图片数据", intent: "updateAvatar" };
+    const base64 = dataUrl.split(",")[1];
+    const buffer = Buffer.from(base64, "base64");
+    await db.user.update({ where: { id: user.id }, data: { avatar: buffer } });
+    return { ok: true, intent: "updateAvatar" };
+  }
+
+  if (intent === "removeAvatar") {
+    await db.user.update({ where: { id: user.id }, data: { avatar: null } });
+    return { ok: true, intent: "removeAvatar" };
+  }
+
   return { ok: false };
 }
 
@@ -83,10 +98,27 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
           toast.success("密码已修改");
           setPwSuccess(true);
           setTimeout(() => setPwSuccess(false), 3000);
+        } else if (fetcher.data.intent === "updateAvatar") {
+          toast.success("头像已更新");
+        } else if (fetcher.data.intent === "removeAvatar") {
+          toast.success("头像已移除");
         }
       }
     }
   }, [fetcher.state, fetcher.data]);
+
+  const handleAvatarUpload = (dataUrl: string) => {
+    const fd = new FormData();
+    fd.set("intent", "updateAvatar");
+    fd.set("avatar", dataUrl);
+    fetcher.submit(fd, { method: "post" });
+  };
+
+  const handleAvatarRemove = () => {
+    const fd = new FormData();
+    fd.set("intent", "removeAvatar");
+    fetcher.submit(fd, { method: "post" });
+  };
 
   if (!fullUser) return null;
 
@@ -99,9 +131,12 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
       >
         <FormSection icon={User} title="基本信息">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-blue-500/20">
-              {fullUser.name.charAt(0)}
-            </div>
+            <AvatarUpload
+              user={{ name: fullUser.name, hasAvatar: fullUser.hasAvatar, id: fullUser.id }}
+              onUpload={handleAvatarUpload}
+              onRemove={handleAvatarRemove}
+              isSaving={isSaving}
+            />
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{fullUser.name}</h3>
               <p className="text-sm text-slate-500">@{fullUser.username}</p>

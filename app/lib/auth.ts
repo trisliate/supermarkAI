@@ -1,6 +1,8 @@
 import type { User, Role } from "@prisma/client";
 
-export type AuthUser = Pick<User, "id" | "username" | "name" | "role">;
+export type AuthUser = Pick<User, "id" | "username" | "name" | "role"> & {
+  hasAvatar: boolean;
+};
 
 export const roleLabels: Record<Role, string> = {
   admin: "店长",

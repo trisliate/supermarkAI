@@ -11,7 +11,7 @@ import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SearchableSelect } from "~/components/ui/searchable-select";
-import { Loader2, AlertCircle, Plus, Minus, Trash2, ShoppingCart, Package } from "lucide-react";
+import { Loader2, AlertCircle, Plus, Minus, Trash2, ShoppingCart, Package, ArrowLeftRight } from "lucide-react";
 import { flashRedirect } from "~/lib/flash.server";
 import { useLoaderData } from "react-router";
 
@@ -33,7 +33,22 @@ export async function loader({ request }: Route.LoaderArgs) {
     supplierProductMap.set(sp.supplierId, list);
   }
 
-  return { user, suppliers, products: serializedProducts, supplierProductMap: Object.fromEntries(supplierProductMap) };
+  // Build product -> suppliers map
+  const productSupplierMap = new Map<number, Array<{ id: number; name: string; price: number }>>();
+  for (const sp of supplierProducts) {
+    const list = productSupplierMap.get(sp.productId) || [];
+    const supplier = suppliers.find((s) => s.id === sp.supplierId);
+    if (supplier) {
+      list.push({ id: sp.supplierId, name: supplier.name, price: Number(sp.price ?? sp.product.price) });
+    }
+    productSupplierMap.set(sp.productId, list);
+  }
+
+  return {
+    user, suppliers, products: serializedProducts,
+    supplierProductMap: Object.fromEntries(supplierProductMap),
+    productSupplierMap: Object.fromEntries(productSupplierMap),
+  };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -86,19 +101,21 @@ interface OrderItem {
 }
 
 export default function NewPurchasePage() {
-  const { user, suppliers, products, supplierProductMap } = useLoaderData<typeof loader>();
+  const { user, suppliers, products, supplierProductMap, productSupplierMap } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
+  const [mode, setMode] = useState<"supplier" | "product">("supplier");
   const [supplierId, setSupplierId] = useState("");
   const [remark, setRemark] = useState("");
   const [items, setItems] = useState<OrderItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState("");
+  const [selectedProductSupplier, setSelectedProductSupplier] = useState("");
 
-  // Filter products by selected supplier
+  // Filter products by selected supplier (supplier-first mode)
   const availableProducts = useMemo(() => {
     if (!supplierId) return products;
     const supplierProds = supplierProductMap[Number(supplierId)];
@@ -106,18 +123,32 @@ export default function NewPurchasePage() {
     return supplierProds;
   }, [supplierId, products, supplierProductMap]);
 
+  // Get suppliers for selected product (product-first mode)
+  const productSuppliers = useMemo(() => {
+    if (!selectedProduct) return [];
+    return productSupplierMap[Number(selectedProduct)] || [];
+  }, [selectedProduct, productSupplierMap]);
+
   const addItem = () => {
     const pid = Number(selectedProduct);
     const price = Number(unitPrice);
     if (!pid || quantity <= 0 || !unitPrice || !isFinite(price) || price <= 0) return;
-    const product = availableProducts.find((p) => p.id === pid);
+
+    // In product-first mode, auto-set supplier
+    if (mode === "product" && selectedProductSupplier && !supplierId) {
+      setSupplierId(selectedProductSupplier);
+    }
+
+    const product = mode === "supplier"
+      ? availableProducts.find((p) => p.id === pid)
+      : products.find((p) => p.id === pid);
     if (!product) return;
-    // Avoid duplicates
     if (items.some((i) => i.productId === pid)) return;
     setItems([...items, { productId: pid, name: product.name, unit: product.unit, quantity, unitPrice: price }]);
     setSelectedProduct("");
     setQuantity(1);
     setUnitPrice("");
+    setSelectedProductSupplier("");
   };
 
   const updateItemQty = (index: number, delta: number) => {
@@ -165,10 +196,33 @@ export default function NewPurchasePage() {
         </Alert>
       )}
 
-      {/* Supplier + Remark */}
+      {/* Mode toggle + Remark */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 space-y-1.5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+            <button
+              type="button"
+              onClick={() => { setMode("supplier"); setSelectedProduct(""); setSelectedProductSupplier(""); }}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${mode === "supplier" ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+            >
+              按供应商选
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("product"); setSupplierId(""); setSelectedProduct(""); setSelectedProductSupplier(""); }}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${mode === "product" ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+            >
+              按商品选
+            </button>
+          </div>
+          <div className="w-48">
+            <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="备注（可选）" className="h-8 text-xs" />
+          </div>
+        </div>
+
+        {/* Supplier-first mode */}
+        {mode === "supplier" && (
+          <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">供应商</Label>
             <Select value={supplierId} onValueChange={(v) => { setSupplierId(v ?? ""); setSelectedProduct(""); }}>
               <SelectTrigger className="w-full"><SelectValue placeholder="选择供应商" /></SelectTrigger>
@@ -182,49 +236,113 @@ export default function NewPurchasePage() {
               <p className="text-[10px] text-slate-400">该供应商关联 {supplierProductMap[Number(supplierId)].length} 个商品</p>
             )}
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">备注</Label>
-            <Input value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="可选备注" />
+        )}
+
+        {/* Product-first mode */}
+        {mode === "product" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">商品</Label>
+              <SearchableSelect
+                options={products
+                  .filter((p) => !items.some((i) => i.productId === p.id))
+                  .map((p) => ({
+                    value: String(p.id),
+                    label: `${p.name}（¥${formatPrice(p.price)}/${p.unit}）`,
+                  }))}
+                value={selectedProduct}
+                onValueChange={(val) => { setSelectedProduct(val); setSelectedProductSupplier(""); setUnitPrice(""); }}
+                placeholder="搜索商品..."
+                searchPlaceholder="输入商品名称搜索"
+                emptyText="无匹配商品"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                供应商{productSuppliers.length > 0 ? `（${productSuppliers.length} 家可供）` : ""}
+              </Label>
+              {selectedProduct ? (
+                productSuppliers.length > 0 ? (
+                  <Select value={selectedProductSupplier} onValueChange={(v) => {
+                    setSelectedProductSupplier(v ?? "");
+                    const sp = productSuppliers.find((s) => s.id === Number(v));
+                    if (sp) setUnitPrice(String(sp.price));
+                  }}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="选择供应商" /></SelectTrigger>
+                    <SelectContent>
+                      {productSuppliers.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}（¥{formatPrice(s.price)}）</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs text-amber-500 py-2">该商品没有关联供应商，请先在商品管理中设置</p>
+                )
+              ) : (
+                <p className="text-xs text-slate-400 py-2">请先选择商品</p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Add product row */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">商品</Label>
-            <SearchableSelect
-              options={availableProducts
-                .filter((p) => !items.some((i) => i.productId === p.id))
-                .map((p) => ({
-                  value: String(p.id),
-                  label: `${p.name}（¥${formatPrice(p.price)}/${p.unit}）`,
-                }))}
-              value={selectedProduct}
-              onValueChange={(val) => {
-                setSelectedProduct(val);
-                const p = availableProducts.find((pr) => pr.id === Number(val));
-                if (p) setUnitPrice(String(p.price));
-              }}
-              placeholder={supplierId ? "搜索该供应商的商品..." : "搜索商品..."}
-              searchPlaceholder="输入商品名称搜索"
-              emptyText="无匹配商品"
-            />
+      {/* Add product row (supplier-first mode) */}
+      {mode === "supplier" && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[200px]">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">商品</Label>
+              <SearchableSelect
+                options={availableProducts
+                  .filter((p) => !items.some((i) => i.productId === p.id))
+                  .map((p) => ({
+                    value: String(p.id),
+                    label: `${p.name}（¥${formatPrice(p.price)}/${p.unit}）`,
+                  }))}
+                value={selectedProduct}
+                onValueChange={(val) => {
+                  setSelectedProduct(val);
+                  const p = availableProducts.find((pr) => pr.id === Number(val));
+                  if (p) setUnitPrice(String(p.price));
+                }}
+                placeholder={supplierId ? "搜索该供应商的商品..." : "搜索商品..."}
+                searchPlaceholder="输入商品名称搜索"
+                emptyText="无匹配商品"
+              />
+            </div>
+            <div className="w-24">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">数量</Label>
+              <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+            </div>
+            <div className="w-32">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">单价</Label>
+              <Input type="number" step="0.01" min="0" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
+            </div>
+            <Button type="button" onClick={addItem} disabled={!selectedProduct} className="h-9">
+              <Plus className="size-4" /> 加入
+            </Button>
           </div>
-          <div className="w-24">
-            <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">数量</Label>
-            <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
-          </div>
-          <div className="w-32">
-            <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">单价</Label>
-            <Input type="number" step="0.01" min="0" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
-          </div>
-          <Button type="button" onClick={addItem} disabled={!selectedProduct} className="h-9">
-            <Plus className="size-4" /> 加入
-          </Button>
         </div>
-      </div>
+      )}
+
+      {/* Add product row (product-first mode) */}
+      {mode === "product" && selectedProduct && selectedProductSupplier && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex-1 min-w-[120px]">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">数量</Label>
+              <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+            </div>
+            <div className="w-32">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">单价</Label>
+              <Input type="number" step="0.01" min="0" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} />
+            </div>
+            <Button type="button" onClick={addItem} className="h-9">
+              <Plus className="size-4" /> 加入
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Items table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden">

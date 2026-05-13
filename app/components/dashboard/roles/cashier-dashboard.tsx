@@ -109,53 +109,53 @@ export function CashierDashboard({
           </Link>
 
           {/* Hot products */}
-          <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">热销速查</span>
-              </div>
-              <span className="text-[10px] text-slate-400">方便快速结账</span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {hotProducts.slice(0, 8).map((p, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-default">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${i < 3 ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600"}`}>
-                      {i + 1}
-                    </span>
-                    <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{p.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] font-mono text-slate-500">¥{formatPrice(p.price)}</span>
-                    <span className={`text-[11px] font-mono ${p.stock < 10 ? "text-red-500 font-semibold" : "text-slate-400"}`}>
-                      余{p.stock}
-                    </span>
-                  </div>
+          {hotProducts.length > 0 && (
+            <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 min-h-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">热销速查</span>
                 </div>
-              ))}
+                <span className="text-[10px] text-slate-400">方便快速结账</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {hotProducts.slice(0, 8).map((p, i) => (
+                  <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-default">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${i < 3 ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600"}`}>
+                        {i + 1}
+                      </span>
+                      <span className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{p.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] font-mono text-slate-500">¥{formatPrice(p.price)}</span>
+                      <span className={`text-[11px] font-mono ${p.stock < 10 ? "text-red-500 font-semibold" : "text-slate-400"}`}>
+                        余{p.stock}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right side panels — 4 cols */}
         <div className="xl:col-span-4 flex flex-col gap-4 min-h-0">
           {/* Recent sales */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近交易</span>
+          {recentSales.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近交易</span>
+                </div>
+                <Link to="/sales" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
+                  全部 <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <Link to="/sales" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
-                全部 <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {recentSales.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">暂无交易</p>
-              ) : (
-                recentSales.map((s) => (
+              <div className="space-y-2">
+                {recentSales.map((s) => (
                   <div key={s.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <div>
                       <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200">SO-{String(s.id).padStart(4, "0")}</p>
@@ -166,10 +166,10 @@ export function CashierDashboard({
                       <p className="text-[9px] text-slate-400">{new Date(s.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</p>
                     </div>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Cashier ranking */}
           {allCashierStats && allCashierStats.length > 0 && (

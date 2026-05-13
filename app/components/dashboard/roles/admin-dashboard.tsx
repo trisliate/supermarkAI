@@ -126,16 +126,14 @@ export function AdminDashboard({
         {/* Right side panels */}
         <div className="xl:col-span-4 flex flex-col gap-4 min-h-0">
           {/* Top products */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">热销 Top 5</span>
-            </div>
-            <div className="space-y-2.5">
-              {topProducts.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">暂无数据</p>
-              ) : (
-                topProducts.map((item, i) => (
+          {topProducts.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">热销 Top 5</span>
+              </div>
+              <div className="space-y-2.5">
+                {topProducts.map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 ${i === 0 ? "bg-amber-500" : i === 1 ? "bg-slate-400" : "bg-slate-300 dark:bg-slate-600"}`}>
                       {i + 1}
@@ -144,22 +142,20 @@ export function AdminDashboard({
                     <span className="text-xs text-slate-400 tabular-nums">{item.quantity}件</span>
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tabular-nums">¥{formatPrice(item.amount)}</span>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Staff performance */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center gap-2 mb-3">
-              <UserCheck className="w-4 h-4 text-blue-500" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">员工绩效</span>
-            </div>
-            <div className="space-y-2.5">
-              {staffPerformance.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">暂无数据</p>
-              ) : (
-                staffPerformance.slice(0, 5).map((s, i) => (
+          {staffPerformance.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center gap-2 mb-3">
+                <UserCheck className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">员工绩效</span>
+              </div>
+              <div className="space-y-2.5">
+                {staffPerformance.slice(0, 5).map((s, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs text-white font-medium shrink-0">
@@ -172,10 +168,10 @@ export function AdminDashboard({
                     </div>
                     <span className="text-sm font-semibold text-emerald-600 shrink-0 tabular-nums">¥{formatPrice(s.salesAmount)}</span>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

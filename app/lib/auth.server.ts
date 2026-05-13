@@ -14,7 +14,7 @@ export async function login(username: string, password: string): Promise<AuthUse
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) return null;
 
-  return { id: user.id, username: user.username, name: user.name, role: user.role };
+  return { id: user.id, username: user.username, name: user.name, role: user.role, hasAvatar: user.avatar !== null };
 }
 
 export async function getUserSession(request: Request): Promise<AuthUser | null> {
@@ -24,9 +24,10 @@ export async function getUserSession(request: Request): Promise<AuthUser | null>
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, username: true, name: true, role: true },
+    select: { id: true, username: true, name: true, role: true, avatar: true },
   });
-  return user;
+  if (!user) return null;
+  return { id: user.id, username: user.username, name: user.name, role: user.role, hasAvatar: user.avatar !== null };
 }
 
 export async function requireUser(request: Request): Promise<AuthUser> {

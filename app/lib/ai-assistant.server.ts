@@ -1,14 +1,19 @@
 import { db } from "./db.server";
 import { decrypt } from "./crypto.server";
 import { formatPrice } from "./utils";
-import type { AIConfig } from "@prisma/client";
+import type { AIConfig, Role } from "@prisma/client";
+import type { AuthUser } from "./auth";
 
 export interface AssistantResponse {
-  type: "text" | "list" | "table" | "navigate";
+  type: "text" | "list" | "table" | "navigate" | "confirm";
   title: string;
   content: string;
   data?: Record<string, unknown>[];
   navigateTo?: string;
+  needsConfirmation?: boolean;
+  toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  fields?: Array<{ key: string; label: string; type: string; options?: string[]; required?: boolean }>;
 }
 
 interface LLMToolCall {
@@ -30,8 +35,66 @@ interface ChatMessage {
 const providerBaseUrls: Record<string, string> = {
   dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   deepseek: "https://api.deepseek.com/v1",
+  mimo: "https://api.deepseek.com/v1",
   glm: "https://open.bigmodel.cn/api/paas/v4",
   moonshot: "https://api.moonshot.cn/v1",
+  ernie: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat",
+  doubao: "https://ark.cn-beijing.volces.com/api/v3",
+  hunyuan: "https://api.hunyuan.cloud.tencent.com/v1",
+  yi: "https://api.lingyiwanwu.com/v1",
+  minimax: "https://api.minimax.chat/v1",
+  spark: "https://spark-api-open.xf-yun.com/v1",
+};
+
+// Tool metadata for permission control
+const toolMeta: Record<string, { requiredRoles?: Role[]; writeOperation?: boolean; fields?: AssistantResponse["fields"] }> = {
+  navigate: {},
+  search_products: {},
+  get_low_stock_products: {},
+  get_sales_report: {},
+  get_supplier_info: {},
+  get_purchase_orders: {},
+  get_categories: {},
+  get_dashboard_stats: {},
+  create_product: {
+    requiredRoles: ["admin", "purchaser"],
+    writeOperation: true,
+    fields: [
+      { key: "name", label: "商品名称", type: "text", required: true },
+      { key: "categoryName", label: "分类名称", type: "text", required: true },
+      { key: "price", label: "售价", type: "number", required: true },
+      { key: "unit", label: "单位", type: "text", required: true },
+      { key: "description", label: "描述", type: "text" },
+    ],
+  },
+  create_supplier: {
+    requiredRoles: ["admin", "purchaser"],
+    writeOperation: true,
+    fields: [
+      { key: "name", label: "供应商名称", type: "text", required: true },
+      { key: "contact", label: "联系人", type: "text", required: true },
+      { key: "phone", label: "电话", type: "text", required: true },
+      { key: "address", label: "地址", type: "text" },
+    ],
+  },
+  create_category: {
+    requiredRoles: ["admin"],
+    writeOperation: true,
+    fields: [
+      { key: "name", label: "分类名称", type: "text", required: true },
+      { key: "description", label: "描述", type: "text" },
+    ],
+  },
+  adjust_inventory: {
+    requiredRoles: ["admin", "inventory_keeper"],
+    writeOperation: true,
+    fields: [
+      { key: "productName", label: "商品名称", type: "text", required: true },
+      { key: "quantity", label: "数量", type: "number", required: true },
+      { key: "type", label: "类型", type: "select", options: ["IN", "OUT"], required: true },
+      { key: "reason", label: "原因", type: "text" },
+    ],
+  },
 };
 
 // Tool definitions for function calling
@@ -103,9 +166,109 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_purchase_orders",
+      description: "查询采购单状态",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["pending", "approved", "received", "rejected", "cancelled", "all"], description: "采购单状态筛选" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_categories",
+      description: "获取商品分类列表及各分类商品数量",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_dashboard_stats",
+      description: "获取系统整体运营数据概览（商品数、销售额、库存预警、待审批等）",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_product",
+      description: "创建新商品（需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "商品名称" },
+          categoryName: { type: "string", description: "分类名称" },
+          price: { type: "number", description: "售价" },
+          unit: { type: "string", description: "单位（个、箱、瓶、袋等）" },
+          description: { type: "string", description: "商品描述" },
+        },
+        required: ["name", "categoryName", "price", "unit"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_supplier",
+      description: "创建新供应商（需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "供应商名称" },
+          contact: { type: "string", description: "联系人" },
+          phone: { type: "string", description: "联系电话" },
+          address: { type: "string", description: "地址" },
+        },
+        required: ["name", "contact", "phone"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_category",
+      description: "创建新商品分类（需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "分类名称" },
+          description: { type: "string", description: "分类描述" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "adjust_inventory",
+      description: "调整商品库存数量（入库或出库，需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          productName: { type: "string", description: "商品名称" },
+          quantity: { type: "number", description: "数量" },
+          type: { type: "string", enum: ["IN", "OUT"], description: "入库(IN)或出库(OUT)" },
+          reason: { type: "string", description: "原因" },
+        },
+        required: ["productName", "quantity", "type"],
+      },
+    },
+  },
 ];
 
-async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
+async function executeTool(name: string, args: Record<string, unknown>, user?: AuthUser): Promise<string> {
+  const meta = toolMeta[name];
+  if (meta?.requiredRoles && user && !meta.requiredRoles.includes(user.role)) {
+    return JSON.stringify({ error: `权限不足：需要 ${meta.requiredRoles.map(r => r === "admin" ? "店长" : r === "purchaser" ? "采购" : r === "inventory_keeper" ? "理货员" : "收银员").join("或")} 角色` });
+  }
   switch (name) {
     case "navigate": {
       const page = args.page as string;
@@ -160,6 +323,165 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
       const suppliers = await db.supplier.findMany({ where, take: 10 });
       return JSON.stringify(suppliers.map((s) => ({ name: s.name, contact: s.contact, phone: s.phone, address: s.address || "未填写" })));
     }
+    case "get_purchase_orders": {
+      const status = (args.status as string) || "all";
+      const where = status === "all" ? {} : { status: status as "pending" | "approved" | "received" | "rejected" | "cancelled" };
+      const orders = await db.purchaseOrder.findMany({
+        where, include: { supplier: { select: { name: true } }, user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" }, take: 10,
+      });
+      return JSON.stringify(orders.map((o) => ({
+        id: `PO-${String(o.id).padStart(4, "0")}`, supplier: o.supplier.name, creator: o.user.name,
+        amount: formatPrice(Number(o.totalAmount)), status: o.status,
+        createdAt: o.createdAt.toLocaleDateString("zh-CN"),
+      })));
+    }
+    case "get_categories": {
+      const cats = await db.category.findMany({
+        include: { _count: { select: { products: true } } },
+        orderBy: { name: "asc" },
+      });
+      return JSON.stringify(cats.map((c) => ({ name: c.name, productCount: c._count.products, description: c.description || "" })));
+    }
+    case "get_dashboard_stats": {
+      const now = new Date();
+      const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+      const [productCount, categoryCount, lowStock, outOfStock, todaySales, todayOrders, pendingPurchases, supplierCount, userCount] = await Promise.all([
+        db.product.count({ where: { status: "active" } }),
+        db.category.count(),
+        db.inventory.count({ where: { quantity: { gt: 0, lt: 10 } } }),
+        db.inventory.count({ where: { quantity: 0 } }),
+        db.saleOrder.aggregate({ _sum: { totalAmount: true }, where: { createdAt: { gte: todayStart } } }),
+        db.saleOrder.count({ where: { createdAt: { gte: todayStart } } }),
+        db.purchaseOrder.count({ where: { status: "pending" } }),
+        db.supplier.count({ where: { status: "active" } }),
+        db.user.count(),
+      ]);
+      return JSON.stringify({
+        productCount, categoryCount, lowStock, outOfStock,
+        todaySales: formatPrice(Number(todaySales._sum.totalAmount || 0)),
+        todayOrders, pendingPurchases, supplierCount, userCount,
+      });
+    }
+    case "create_product": {
+      const name = args.name as string;
+      const categoryName = args.categoryName as string;
+      const price = Number(args.price);
+      const unit = args.unit as string;
+      const description = args.description as string | undefined;
+
+      if (!name || !categoryName || !price || !unit) {
+        return JSON.stringify({ error: "缺少必填字段：商品名称、分类、价格、单位" });
+      }
+
+      const category = await db.category.findFirst({ where: { name: categoryName } });
+      if (!category) {
+        return JSON.stringify({ error: `分类"${categoryName}"不存在，请先创建分类` });
+      }
+
+      const existing = await db.product.findFirst({ where: { name, categoryId: category.id } });
+      if (existing) {
+        return JSON.stringify({ error: `商品"${name}"在该分类下已存在` });
+      }
+
+      const product = await db.product.create({
+        data: { name, categoryId: category.id, price, unit, description: description || null },
+      });
+      await db.inventory.create({ data: { productId: product.id, quantity: 0 } });
+
+      return JSON.stringify({ success: true, message: `商品"${name}"已创建，初始库存为 0`, productId: product.id });
+    }
+
+    case "create_supplier": {
+      const name = args.name as string;
+      const contact = args.contact as string;
+      const phone = args.phone as string;
+      const address = args.address as string | undefined;
+
+      if (!name || !contact || !phone) {
+        return JSON.stringify({ error: "缺少必填字段：供应商名称、联系人、电话" });
+      }
+
+      const existing = await db.supplier.findFirst({ where: { name } });
+      if (existing) {
+        return JSON.stringify({ error: `供应商"${name}"已存在` });
+      }
+
+      const supplier = await db.supplier.create({
+        data: { name, contact, phone, address: address || null },
+      });
+
+      return JSON.stringify({ success: true, message: `供应商"${name}"已创建`, supplierId: supplier.id });
+    }
+
+    case "create_category": {
+      const name = args.name as string;
+      const description = args.description as string | undefined;
+
+      if (!name) {
+        return JSON.stringify({ error: "缺少分类名称" });
+      }
+
+      const existing = await db.category.findUnique({ where: { name } });
+      if (existing) {
+        return JSON.stringify({ error: `分类"${name}"已存在` });
+      }
+
+      const category = await db.category.create({
+        data: { name, description: description || null },
+      });
+
+      return JSON.stringify({ success: true, message: `分类"${name}"已创建`, categoryId: category.id });
+    }
+
+    case "adjust_inventory": {
+      const productName = args.productName as string;
+      const quantity = Number(args.quantity);
+      const type = args.type as "IN" | "OUT";
+      const reason = args.reason as string | undefined;
+      const userId = user?.id;
+
+      if (!productName || !quantity || quantity <= 0) {
+        return JSON.stringify({ error: "请提供有效的商品名称和数量" });
+      }
+
+      const product = await db.product.findFirst({
+        where: { name: { contains: productName }, status: "active" },
+        include: { inventory: true },
+      });
+      if (!product) {
+        return JSON.stringify({ error: `未找到商品"${productName}"` });
+      }
+      if (!product.inventory) {
+        return JSON.stringify({ error: `商品"${product.name}"没有库存记录` });
+      }
+
+      const currentStock = product.inventory.quantity;
+      const newStock = type === "IN" ? currentStock + quantity : currentStock - quantity;
+      if (newStock < 0) {
+        return JSON.stringify({ error: `库存不足：当前 ${currentStock}，无法出库 ${quantity}` });
+      }
+
+      await db.inventory.update({
+        where: { productId: product.id },
+        data: { quantity: newStock },
+      });
+      await db.inventoryLog.create({
+        data: {
+          productId: product.id,
+          type,
+          quantity,
+          reason: reason || `AI 助手调整 (${type === "IN" ? "入库" : "出库"})`,
+          userId: userId || 1,
+        },
+      });
+
+      return JSON.stringify({
+        success: true,
+        message: `${product.name} ${type === "IN" ? "入库" : "出库"} ${quantity}${product.unit}，库存 ${currentStock} → ${newStock}`,
+      });
+    }
+
     default:
       return JSON.stringify({ error: "未知工具" });
   }
@@ -181,16 +503,25 @@ async function buildSystemPrompt(): Promise<string> {
 
   const todayAmount = Number(todaySales._sum.totalAmount || 0);
 
-  return `你是一个超市管理系统的 AI 智能助手。你可以帮助用户查询库存、销售、供应商等信息，也可以帮用户导航到系统中的不同页面。
+  return `你是超市管理系统的 AI 智能助手。你的职责是帮助用户了解系统、查询数据、导航页面、指引操作。
 
-当前系统数据概览：
-- 活跃商品：${productCount} 个，分布在 ${categoryCount} 个分类中
-- 低库存商品（<10）：${lowStockCount} 个
-- 缺货商品：${outOfStockCount} 个
-- 今日销售额：¥${formatPrice(todayAmount)}，${todayOrders} 笔订单
-- 待审批采购单：${pendingPurchases} 笔
+## 你可以做的：
+1. **查询数据**：库存、销售、采购、供应商、分类等实时数据
+2. **导航页面**：帮用户跳转到系统中的任何页面
+3. **指引操作**：告诉用户如何完成某项操作（如"怎么新建采购单"→引导到采购管理页面）
+4. **数据分析**：解读销售趋势、库存状态、给出建议
 
-你可以使用提供的工具来查询数据和导航页面。请用中文回答，简洁明了。`;
+## 当前系统实时数据：
+- 活跃商品：${productCount} 个，${categoryCount} 个分类
+- 库存预警：${lowStockCount} 个低库存，${outOfStockCount} 个缺货
+- 今日销售：¥${formatPrice(todayAmount)}，${todayOrders} 笔订单
+- 待审批采购：${pendingPurchases} 笔
+
+## 回答风格：
+- 简洁明了，用中文
+- 涉及数据时用表格展示
+- 涉及操作时给出具体的导航指引
+- 如果用户问的问题需要去某个页面操作，用 navigate 工具帮他们跳转`;
 }
 
 async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
@@ -229,12 +560,12 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
   };
 }
 
-export async function processQuery(input: string, history?: ChatMessage[]): Promise<AssistantResponse> {
+export async function processQuery(input: string, user?: AuthUser, history?: ChatMessage[]): Promise<AssistantResponse> {
   // Try LLM integration first
   try {
     const config = await db.aIConfig.findFirst({ where: { isActive: true } });
     if (config) {
-      return await processWithLLM(config, input, history);
+      return await processWithLLM(config, input, user, history);
     }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -245,7 +576,29 @@ export async function processQuery(input: string, history?: ChatMessage[]): Prom
   return processWithKeywords(input);
 }
 
-async function processWithLLM(config: AIConfig, input: string, history?: ChatMessage[]): Promise<AssistantResponse> {
+export async function executeConfirmedTool(toolName: string, toolArgs: Record<string, unknown>, user?: AuthUser): Promise<AssistantResponse> {
+  const result = await executeTool(toolName, toolArgs, user);
+  const parsed = JSON.parse(result);
+
+  if (parsed.error) {
+    return { type: "text", title: "执行失败", content: parsed.error };
+  }
+
+  const labels: Record<string, string> = {
+    create_product: "创建商品",
+    create_supplier: "创建供应商",
+    create_category: "创建分类",
+    adjust_inventory: "调整库存",
+  };
+
+  return {
+    type: "text",
+    title: labels[toolName] || "操作完成",
+    content: parsed.message || "操作已成功执行",
+  };
+}
+
+async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, history?: ChatMessage[]): Promise<AssistantResponse> {
   const systemPrompt = await buildSystemPrompt();
 
   const messages: ChatMessage[] = [
@@ -258,12 +611,30 @@ async function processWithLLM(config: AIConfig, input: string, history?: ChatMes
 
   // Handle tool calls
   if (result.toolCalls && result.toolCalls.length > 0) {
+    // Check for write operations that need confirmation
+    for (const toolCall of result.toolCalls) {
+      const functionName = toolCall.function?.name;
+      const meta = toolMeta[functionName];
+      if (meta?.writeOperation) {
+        const functionArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
+        return {
+          type: "confirm",
+          title: `确认${functionName === "create_product" ? "创建商品" : functionName === "create_supplier" ? "创建供应商" : functionName === "create_category" ? "创建分类" : "调整库存"}`,
+          content: result.content || "AI 建议执行以下操作，请确认：",
+          needsConfirmation: true,
+          toolName: functionName,
+          toolArgs: functionArgs,
+          fields: meta.fields,
+        };
+      }
+    }
+
     const toolResults: ChatMessage[] = [];
 
     for (const toolCall of result.toolCalls) {
       const functionName = toolCall.function?.name;
       const functionArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
-      const toolResult = await executeTool(functionName, functionArgs);
+      const toolResult = await executeTool(functionName, functionArgs, user);
 
       toolResults.push({
         role: "assistant" as const,

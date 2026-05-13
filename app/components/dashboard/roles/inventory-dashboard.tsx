@@ -148,21 +148,19 @@ export function InventoryDashboard({
         {/* Right side panels — 4 cols */}
         <div className="xl:col-span-4 flex flex-col gap-4 min-h-0">
           {/* Recent logs */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近出入库</span>
+          {recentLogs.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">最近出入库</span>
+                </div>
+                <Link to="/inventory/log" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
+                  全部 <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <Link to="/inventory/log" className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-0.5">
-                全部 <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {recentLogs.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">暂无记录</p>
-              ) : (
-                recentLogs.slice(0, 6).map((log) => (
+              <div className="space-y-2">
+                {recentLogs.slice(0, 6).map((log) => (
                   <div key={log.id} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${typeColors[log.type]}`}>
                       {typeLabels[log.type]}
@@ -174,20 +172,18 @@ export function InventoryDashboard({
                       {log.type === "IN" ? "+" : "-"}{log.quantity}
                     </span>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Slow moving */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingDown className="w-4 h-4 text-orange-500" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">滞销预警</span>
-            </div>
-            {slowMoving.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-6">暂无滞销商品</p>
-            ) : (
+          {slowMoving.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingDown className="w-4 h-4 text-orange-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">滞销预警</span>
+              </div>
               <div className="space-y-2">
                 {slowMoving.slice(0, 6).map((item) => (
                   <div key={item.productId} className="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
@@ -199,8 +195,8 @@ export function InventoryDashboard({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

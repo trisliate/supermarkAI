@@ -1,9 +1,8 @@
 import { useLocation, useNavigate } from "react-router";
 import type { AuthUser } from "~/lib/auth";
-import { roleLabels } from "~/lib/auth";
 import {
   LayoutDashboard, Users, Package, Tags, Truck,
-  ShoppingCart, Warehouse, Receipt, Store, Bot,
+  ShoppingCart, Warehouse, Receipt, Store, Sparkles, Bell,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -62,17 +61,11 @@ const navGroups: NavGroup[] = [
     label: "系统",
     items: [
       { label: "用户管理", href: "/users", roles: ["admin"], icon: Users },
-      { label: "AI 设置", href: "/settings/ai", roles: ["admin"], icon: Bot },
+      { label: "通知管理", href: "/notifications", roles: ["admin"], icon: Bell },
+      { label: "AI 设置", href: "/settings/ai", roles: ["admin"], icon: Sparkles },
     ],
   },
 ];
-
-const roleDotColors: Record<string, string> = {
-  admin: "bg-amber-500",
-  purchaser: "bg-blue-500",
-  inventory_keeper: "bg-teal-500",
-  cashier: "bg-purple-500",
-};
 
 export function AppSidebar({ user }: { user: AuthUser }) {
   const location = useLocation();
@@ -87,17 +80,14 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
       {/* Header: logo stays fixed, text fades out */}
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-2">
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-3">
         <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-          <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-xl flex items-center justify-center shrink-0 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8">
-            <Store className="w-5 h-5 text-white dark:text-slate-900" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8">
+            <Store className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0 flex-1 overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight truncate whitespace-nowrap">超市管理系统</h2>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${roleDotColors[user.role]}`} />
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate whitespace-nowrap">{user.name} · {roleLabels[user.role]}</span>
-            </div>
+            <h2 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight truncate whitespace-nowrap">SuperMarket</h2>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate whitespace-nowrap">智慧运营管理系统</p>
           </div>
         </div>
       </SidebarHeader>

@@ -2,12 +2,14 @@ import { Form, Link, useLocation } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
-import { Cat, Palette, LogOut, Sun, Moon, Monitor, PanelLeft } from "lucide-react";
+import { Cat, Palette, LogOut, Sun, Moon, Monitor, PanelLeft, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 import { NotificationDropdown } from "~/components/notification-dropdown";
+import { AvatarWithFallback } from "~/components/ui/avatar-with-fallback";
 import { useTheme, type AccentColor } from "~/components/theme-provider";
 import { Switch } from "~/components/ui/switch";
 import { useSidebar } from "~/components/ui/sidebar";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import { useNavigationHistory } from "~/hooks/use-navigation-history";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "仪表盘",
@@ -46,15 +48,17 @@ interface HeaderProps {
   user: AuthUser;
   catEnabled: boolean;
   onToggleCat: () => void;
+  onOpenChat: () => void;
 }
 
-export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
+export function Header({ user, catEnabled, onToggleCat, onOpenChat }: HeaderProps) {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const logoutFormRef = useRef<HTMLFormElement>(null);
   const { theme, setTheme, accentColor, setAccentColor, resolvedTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
+  const { goBack, goForward, canBack, canForward } = useNavigationHistory();
 
   useEffect(() => {
     if (!showSettings) return;
@@ -71,8 +75,8 @@ export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
 
   return (
     <header className="h-14 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between px-5 backdrop-blur-md sticky top-0 z-20">
-      {/* Left: sidebar toggle + page title */}
-      <div className="flex items-center gap-2">
+      {/* Left: sidebar toggle + nav arrows + page title */}
+      <div className="flex items-center gap-1">
         <button
           onClick={toggleSidebar}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
@@ -80,7 +84,23 @@ export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+        <button
+          onClick={goBack}
+          disabled={!canBack}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          title="后退"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={goForward}
+          disabled={!canForward}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          title="前进"
+        >
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 ml-1">
           {currentPage?.[1] || ""}
         </div>
       </div>
@@ -88,6 +108,15 @@ export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
       {/* Right side */}
       <div className="flex items-center gap-1">
         <NotificationDropdown />
+
+        {/* AI assistant */}
+        <button
+          onClick={onOpenChat}
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 dark:text-slate-500 dark:hover:text-primary dark:hover:bg-primary/10 transition-colors"
+          title="AI 助手"
+        >
+          <Sparkles className="w-[18px] h-[18px]" />
+        </button>
 
         {/* Settings dropdown */}
         <div className="relative">
@@ -181,9 +210,7 @@ export function Header({ user, catEnabled, onToggleCat }: HeaderProps) {
           className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           title="个人信息"
         >
-          <div className="w-7 h-7 bg-slate-900 dark:bg-white rounded-full flex items-center justify-center text-white dark:text-slate-900 text-xs font-bold">
-            {user.name.charAt(0)}
-          </div>
+          <AvatarWithFallback user={user} size="sm" />
           <div className="hidden sm:flex items-center gap-1.5">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{user.name}</span>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${roleColors[user.role] || "bg-gray-50 text-gray-600"}`}>

@@ -47,12 +47,30 @@ export function NotificationDropdown() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      const fd = new FormData();
+      fd.set("intent", "markAllRead");
+      unreadIds.forEach((id) => fd.append("ids", id));
+      await fetch("/api/notifications", { method: "POST", body: fd });
+    } catch {
+      // silent
+    }
   };
 
-  const removeNotification = (id: string) => {
+  const removeNotification = async (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const fd = new FormData();
+      fd.set("intent", "markRead");
+      fd.set("notificationId", id);
+      await fetch("/api/notifications", { method: "POST", body: fd });
+    } catch {
+      // silent
+    }
   };
 
   const formatTime = (iso: string) => {

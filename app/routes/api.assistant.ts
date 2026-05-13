@@ -1,5 +1,6 @@
 import type { Route } from "./+types/api.assistant";
-import { processQuery } from "~/lib/ai-assistant.server";
+import { processQuery, executeConfirmedTool } from "~/lib/ai-assistant.server";
+import { getUserSession } from "~/lib/auth.server";
 
 export async function action({ request }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -8,7 +9,17 @@ export async function action({ request }: Route.ActionArgs) {
 
   try {
     const body = await request.json();
-    const { query, messages } = body;
+    const { query, messages, confirmedTool, confirmedArgs } = body;
+    const user = await getUserSession(request);
+
+    // Handle confirmed write operations
+    if (confirmedTool && confirmedArgs) {
+      if (!user) {
+        return Response.json({ error: "请先登录" }, { status: 401 });
+      }
+      const result = await executeConfirmedTool(confirmedTool, confirmedArgs, user);
+      return Response.json(result);
+    }
 
     if (!query || typeof query !== "string") {
       return Response.json({ error: "请输入问题" }, { status: 400 });
@@ -16,7 +27,7 @@ export async function action({ request }: Route.ActionArgs) {
 
     // Pass conversation history if provided (for LLM context)
     const history = Array.isArray(messages) ? messages.slice(-10) : undefined;
-    const result = await processQuery(query, history);
+    const result = await processQuery(query, user || undefined, history);
     return Response.json(result);
   } catch {
     return Response.json({ error: "处理请求时出错" }, { status: 500 });

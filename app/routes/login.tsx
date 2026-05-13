@@ -32,10 +32,10 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 const modules = [
-  { icon: Package, label: "商品与库存", desc: "实时库存监控、智能预警补货", style: "top-[12%] left-[8%] -rotate-6" },
-  { icon: Users, label: "多角色协作", desc: "店长、采购、理货、收银各司其职", style: "top-[22%] right-[10%] rotate-3" },
-  { icon: Truck, label: "供应链管理", desc: "供应商管理与采购流程自动化", style: "bottom-[28%] left-[5%] rotate-2" },
-  { icon: BarChart3, label: "数据驱动", desc: "销售趋势、分类分布一目了然", style: "bottom-[15%] right-[8%] -rotate-3" },
+  { icon: Package, label: "商品与库存", desc: "实时库存监控、智能预警补货", anim: "animate-[float-1_6s_ease-in-out_infinite]", style: "top-[12%] left-[8%]" },
+  { icon: Users, label: "多角色协作", desc: "店长、采购、理货、收银各司其职", anim: "animate-[float-2_7s_ease-in-out_infinite_0.5s]", style: "top-[22%] right-[10%]" },
+  { icon: Truck, label: "供应链管理", desc: "供应商管理与采购流程自动化", anim: "animate-[float-3_8s_ease-in-out_infinite_1s]", style: "bottom-[28%] left-[5%]" },
+  { icon: BarChart3, label: "数据驱动", desc: "销售趋势、分类分布一目了然", anim: "animate-[float-4_5s_ease-in-out_infinite_1.5s]", style: "bottom-[15%] right-[8%]" },
 ];
 
 export default function LoginPage() {
@@ -119,12 +119,20 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 relative flex items-center justify-center overflow-hidden transition-colors">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
+      {/* Floating animation keyframes */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes float-1 { 0%,100%{transform:translateY(0) rotate(-6deg)} 50%{transform:translateY(-12px) rotate(-4deg)} }
+        @keyframes float-2 { 0%,100%{transform:translateY(0) rotate(3deg)} 50%{transform:translateY(-10px) rotate(5deg)} }
+        @keyframes float-3 { 0%,100%{transform:translateY(0) rotate(2deg)} 50%{transform:translateY(-14px) rotate(0deg)} }
+        @keyframes float-4 { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-8px) rotate(-5deg)} }
+      ` }} />
+
       {/* Scattered decorative module cards */}
       <div className="hidden lg:block">
         {modules.map((m) => (
           <div
             key={m.label}
-            className={`absolute ${m.style} bg-white/60 dark:bg-white/[0.04] backdrop-blur-sm rounded-2xl p-4 border border-slate-200/50 dark:border-white/[0.06] w-48 pointer-events-none select-none`}
+            className={`absolute ${m.style} ${m.anim} bg-white/60 dark:bg-white/[0.04] backdrop-blur-sm rounded-2xl p-4 border border-slate-200/50 dark:border-white/[0.06] w-48 pointer-events-none select-none will-change-transform`}
           >
             <m.icon className="w-5 h-5 text-slate-400 dark:text-white/50 mb-2" />
             <p className="text-sm font-medium text-slate-700 dark:text-white/80 mb-0.5">{m.label}</p>

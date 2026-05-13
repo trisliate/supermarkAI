@@ -36,17 +36,26 @@ enum InventoryType {
   OUT  // 出库
 }
 
+enum NotificationType {
+  system
+  stock_alert
+  purchase_status
+  sale_milestone
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   username  String   @unique
   password  String
   name      String
   role      Role
+  avatar    Bytes?
   createdAt DateTime @default(now())
 
-  purchaseOrders PurchaseOrder[]
-  saleOrders     SaleOrder[]
-  inventoryLogs  InventoryLog[]
+  purchaseOrders    PurchaseOrder[]
+  saleOrders        SaleOrder[]
+  inventoryLogs     InventoryLog[]
+  notificationReads NotificationRead[]
 }
 
 model Category {
@@ -116,11 +125,13 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              Int     @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   purchaseOrderId Int
   productId       Int
   quantity        Int
-  unitPrice       Decimal @db.Decimal(10, 2)
+  unitPrice       Decimal   @db.Decimal(10, 2)
+  productionDate  DateTime? // 生产日期
+  expiryDate      DateTime? // 保质期/到期日期
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   product       Product       @relation(fields: [productId], references: [id])
@@ -169,6 +180,26 @@ model SaleOrderItem {
   product   Product   @relation(fields: [productId], references: [id])
 }
 
+model Notification {
+  id         Int              @id @default(autoincrement())
+  title      String
+  content    String           @db.Text
+  type       NotificationType @default(system)
+  targetRole Role?
+  createdAt  DateTime         @default(now())
+}
+
+model NotificationRead {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  notificationId String   // e.g. "stock-low", "purchase-pending", "notif-{id}"
+  readAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationId])
+}
+
 model AIConfig {
   id           Int      @id @default(autoincrement())
   provider     String   // dashscope, ernie, glm, moonshot, deepseek
@@ -177,6 +208,8 @@ model AIConfig {
   baseUrl      String?
   isActive     Boolean  @default(false)
   systemPrompt String?  @db.Text
+  lastTestedAt DateTime?
+  lastTestMs   Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
