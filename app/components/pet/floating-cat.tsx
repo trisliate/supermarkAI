@@ -13,11 +13,7 @@ const tips = [
 
 type CatState = "walking" | "sleeping" | "jumping" | "dragging";
 
-interface FloatingCatProps {
-  onDoubleClick: () => void;
-}
-
-export function FloatingCat({ onDoubleClick }: FloatingCatProps) {
+export function FloatingCat() {
   const [state, setState] = useState<CatState>("walking");
   const [pos, setPos] = useState({ x: 0, y: 0 }); // offset from initial position
   const [walkOffset, setWalkOffset] = useState(0);
@@ -27,7 +23,6 @@ export function FloatingCat({ onDoubleClick }: FloatingCatProps) {
   const [initialized, setInitialized] = useState(false);
 
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
-  const clickTimerRef = useRef<number | null>(null);
 
   // Initialize position to bottom-right area
   useEffect(() => {
@@ -133,36 +128,24 @@ export function FloatingCat({ onDoubleClick }: FloatingCatProps) {
     dragRef.current = null;
   }, []);
 
-  // Click handler with double-click detection
+  // Click handler
   const handleClick = useCallback(() => {
     if (dragRef.current?.moved) return;
 
-    if (clickTimerRef.current) {
-      // Double click detected
-      clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-      onDoubleClick();
+    if (state === "sleeping") {
+      setState("walking");
+      setBubble("喵~ 我醒了！");
+      setTimeout(() => setBubble(null), 2500);
       return;
     }
-
-    clickTimerRef.current = window.setTimeout(() => {
-      clickTimerRef.current = null;
-      // Single click action
-      if (state === "sleeping") {
-        setState("walking");
-        setBubble("喵~ 我醒了！");
-        setTimeout(() => setBubble(null), 2500);
-        return;
-      }
-      setState("jumping");
-      const tip = tips[Math.floor(Math.random() * tips.length)];
-      setBubble(tip);
-      setTimeout(() => {
-        setState("walking");
-        setBubble(null);
-      }, 3000);
-    }, 250);
-  }, [state, onDoubleClick]);
+    setState("jumping");
+    const tip = tips[Math.floor(Math.random() * tips.length)];
+    setBubble(tip);
+    setTimeout(() => {
+      setState("walking");
+      setBubble(null);
+    }, 3000);
+  }, [state]);
 
   const catFace = (() => {
     if (state === "sleeping") return sleepingFrames[Math.floor(Date.now() / 1000) % sleepingFrames.length];
@@ -198,7 +181,7 @@ export function FloatingCat({ onDoubleClick }: FloatingCatProps) {
           state === "jumping" ? "animate-cat-jump" : ""
         } ${state === "sleeping" ? "opacity-70" : ""}`}
         style={{ transform: direction === -1 ? "scaleX(-1)" : "scaleX(1)" }}
-        title="拖拽移动 · 单击互动 · 双击打开助手"
+        title="拖拽移动 · 单击互动"
       >
         <div className="text-2xl leading-none select-none" style={{ fontFamily: "monospace" }}>
           {catFace}

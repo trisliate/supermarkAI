@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bell, ShoppingCart, Package, AlertTriangle, TrendingUp, Clock, X } from "lucide-react";
 import { ScrollArea } from "~/components/ui/scroll-area";
 
@@ -30,37 +30,22 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  useEffect(() => {
-    // Generate notifications from recent activity
-    const now = Date.now();
-    const items: Notification[] = [
-      {
-        id: "1",
-        type: "stock",
-        title: "库存预警",
-        description: "有商品库存不足，请及时补货",
-        time: new Date(now - 1000 * 60 * 30).toISOString(),
-        read: false,
-      },
-      {
-        id: "2",
-        type: "purchase",
-        title: "待审批采购单",
-        description: "有新的采购单等待审批",
-        time: new Date(now - 1000 * 60 * 60 * 2).toISOString(),
-        read: false,
-      },
-      {
-        id: "3",
-        type: "system",
-        title: "系统通知",
-        description: "欢迎使用超市管理系统",
-        time: new Date(now - 1000 * 60 * 60 * 24).toISOString(),
-        read: true,
-      },
-    ];
-    setNotifications(items);
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) return;
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+    } catch {
+      // silent
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -83,7 +68,7 @@ export function NotificationDropdown() {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); if (!open) fetchNotifications(); }}
         className="relative w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
         title="通知"
       >

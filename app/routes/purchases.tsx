@@ -10,7 +10,7 @@ import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
-import { Plus, Eye, CheckCircle, XCircle, ShoppingCart, Calendar, User, Building2, Search } from "lucide-react";
+import { Plus, Eye, CheckCircle, XCircle, ShoppingCart, Calendar, User, Building2, Search, Ban } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
@@ -21,6 +21,7 @@ const statusLabels: Record<string, string> = {
   pending: "待审批",
   approved: "已审批",
   received: "已入库",
+  rejected: "已驳回",
   cancelled: "已取消",
 };
 
@@ -28,6 +29,7 @@ const statusColors: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
   approved: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
   received: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800",
+  rejected: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
   cancelled: "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
 };
 
@@ -35,6 +37,7 @@ const statusDot: Record<string, string> = {
   pending: "bg-amber-500",
   approved: "bg-blue-500",
   received: "bg-emerald-500",
+  rejected: "bg-red-500",
   cancelled: "bg-slate-400",
 };
 
@@ -67,6 +70,8 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "approve" && user.role === "admin") {
     await db.purchaseOrder.update({ where: { id }, data: { status: "approved" } });
+  } else if (intent === "reject" && user.role === "admin") {
+    await db.purchaseOrder.update({ where: { id }, data: { status: "rejected" } });
   } else if (intent === "cancel") {
     await db.purchaseOrder.update({ where: { id }, data: { status: "cancelled" } });
   }
@@ -78,6 +83,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
   const { user, purchases, total, page, pageSize } = loaderData;
   const fetcher = useFetcher();
   const [cancelId, setCancelId] = useState<number | null>(null);
+  const [rejectId, setRejectId] = useState<number | null>(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const isCancelling = fetcher.state !== "idle";
@@ -89,6 +95,9 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
       if (cancelId !== null) {
         toast.success("采购单已取消");
         setCancelId(null);
+      } else if (rejectId !== null) {
+        toast.success("采购单已驳回");
+        setRejectId(null);
       } else {
         toast.success("采购单已审批");
       }
@@ -101,7 +110,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
     const matchSearch = !q || p.supplier.name.toLowerCase().includes(q) || p.user.name.toLowerCase().includes(q) || `PO-${String(p.id).padStart(4, "0")}`.toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });
-  const counts = { all: purchases.length, pending: 0, approved: 0, received: 0, cancelled: 0 };
+  const counts = { all: purchases.length, pending: 0, approved: 0, received: 0, rejected: 0, cancelled: 0 };
   purchases.forEach((p) => { counts[p.status as keyof typeof counts]++; });
 
   return (
@@ -133,6 +142,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
             <TabsTrigger value="pending">待审批 ({counts.pending})</TabsTrigger>
             <TabsTrigger value="approved">已审批 ({counts.approved})</TabsTrigger>
             <TabsTrigger value="received">已入库 ({counts.received})</TabsTrigger>
+            <TabsTrigger value="rejected">已驳回 ({counts.rejected})</TabsTrigger>
             <TabsTrigger value="cancelled">已取消 ({counts.cancelled})</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -215,6 +225,17 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
                       </fetcher.Form>
                     )}
 
+                    {p.status === "pending" && user.role === "admin" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-red-500 hover:text-red-600"
+                        onClick={() => setRejectId(p.id)}
+                      >
+                        <Ban className="size-3.5" />
+                      </Button>
+                    )}
+
                     {p.status === "pending" && (
                       <Button
                         variant="ghost"
@@ -234,6 +255,22 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
         <DataTablePagination totalPages={Math.ceil(total / pageSize)} currentPage={page} />
       </div>
       )}
+
+      <ConfirmDialog
+        open={rejectId !== null}
+        onOpenChange={(open) => { if (!open) setRejectId(null); }}
+        title="驳回采购单"
+        description="确定要驳回该采购单吗？驳回后需重新创建。"
+        confirmText="驳回"
+        loading={isCancelling}
+        onConfirm={() => {
+          if (rejectId === null) return;
+          const fd = new FormData();
+          fd.set("intent", "reject");
+          fd.set("id", String(rejectId));
+          fetcher.submit(fd, { method: "post" });
+        }}
+      />
 
       <ConfirmDialog
         open={cancelId !== null}

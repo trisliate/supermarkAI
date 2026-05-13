@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { formatPrice } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Loader2, AlertCircle, Search, Plus, Minus, Trash2, CreditCard, Package } from "lucide-react";
+import { Loader2, AlertCircle, Search, Plus, Minus, Trash2, CreditCard, Package, ShoppingCart } from "lucide-react";
 import { flashRedirect } from "~/lib/flash.server";
 
 interface CartItem {
@@ -313,8 +313,10 @@ export default function SalesNewPage() {
             {/* Cart items */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {cart.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  购物车为空
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
+                  <p className="text-sm">购物车为空</p>
+                  <p className="text-xs mt-1">选择左侧商品加入购物车</p>
                 </div>
               ) : cart.map((item) => (
                 <div

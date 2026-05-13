@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
 import {
@@ -78,10 +78,9 @@ const roleDotColors: Record<string, string> = {
 
 export function AppSidebar({ user }: { user: AuthUser }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const isActive = (href: string) =>
-    location.pathname === href ||
-    (href !== "/dashboard" && location.pathname.startsWith(href + "/"));
+  const isActive = (href: string) => location.pathname === href;
 
   return (
     <ShadSidebar
@@ -125,10 +124,10 @@ export function AppSidebar({ user }: { user: AuthUser }) {
                     return (
                       <SidebarMenuItem key={item.href + item.label}>
                         <SidebarMenuButton
-                          render={<Link to={item.href} />}
+                          render={<button type="button" onClick={(e) => { e.stopPropagation(); navigate(item.href); }} />}
                           isActive={active}
                           tooltip={item.label}
-                          className="gap-3 h-9 rounded-xl text-[13px] hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
+                          className="gap-3 h-9 rounded-xl text-[13px] cursor-pointer hover:bg-slate-100/80 dark:hover:bg-slate-800/60 data-[active=true]:bg-blue-50 data-[active=true]:text-blue-700 dark:data-[active=true]:bg-blue-950/40 dark:data-[active=true]:text-blue-400"
                         >
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>

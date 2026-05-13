@@ -26,4 +26,5 @@ export default [
   route("profile", "routes/profile.tsx"),
   route("settings/ai", "routes/settings.ai.tsx"),
   route("api/assistant", "routes/api.assistant.ts"),
+  route("api/notifications", "routes/api.notifications.ts"),
 ] satisfies RouteConfig;

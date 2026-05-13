@@ -27,6 +27,7 @@ enum PurchaseStatus {
   pending    // 待审批
   approved   // 已审批
   received   // 已入库
+  rejected   // 已驳回
   cancelled  // 已取消
 }
 
@@ -66,11 +67,12 @@ model Product {
   status      ProductStatus @default(active)
   createdAt   DateTime      @default(now())
 
-  category         Category          @relation(fields: [categoryId], references: [id])
+  category         Category           @relation(fields: [categoryId], references: [id])
   inventory        Inventory?
   purchaseItems    PurchaseOrderItem[]
   saleItems        SaleOrderItem[]
   inventoryLogs    InventoryLog[]
+  supplierProducts SupplierProduct[]
 }
 
 model Supplier {
@@ -81,7 +83,21 @@ model Supplier {
   address String?
   status  SupplierStatus @default(active)
 
-  purchaseOrders PurchaseOrder[]
+  purchaseOrders    PurchaseOrder[]
+  supplierProducts  SupplierProduct[]
+}
+
+model SupplierProduct {
+  id         Int      @id @default(autoincrement())
+  supplierId Int
+  productId  Int
+  price      Decimal? @db.Decimal(10, 2)  // 该供应商的供货价
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, productId])
 }
 
 model PurchaseOrder {

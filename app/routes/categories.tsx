@@ -4,14 +4,12 @@ import type { Route } from "./+types/categories";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
-import { Plus, Trash2, Tags, Loader2, Search } from "lucide-react";
+import { Plus, Trash2, Tags, Loader2, Search, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
 
@@ -62,6 +60,7 @@ export default function CategoriesPage() {
   const isSubmitting = navigation.state === "submitting";
   const isLoading = navigation.state === "loading" && navigation.location?.pathname === "/categories";
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
   const isDeleting = fetcher.state !== "idle";
 
@@ -69,9 +68,14 @@ export default function CategoriesPage() {
     if (fetcher.state === "idle" && fetcher.data) {
       if (fetcher.data.error) {
         toast.error(fetcher.data.error);
-      } else if (fetcher.data.ok && deleteId !== null) {
-        toast.success("分类已删除");
-        setDeleteId(null);
+      } else if (fetcher.data.ok) {
+        if (deleteId !== null) {
+          toast.success("分类已删除");
+          setDeleteId(null);
+        } else {
+          toast.success("分类已添加");
+          setShowAdd(false);
+        }
       }
     }
   }, [fetcher.state, fetcher.data]);
@@ -85,94 +89,101 @@ export default function CategoriesPage() {
   return (
     <AppLayout user={user}>
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
-      <div className="space-y-4 animate-fade-in">
-        <div>
-          <h2 className="text-2xl font-bold">分类管理</h2>
-          <p className="text-sm text-muted-foreground mt-1">管理商品分类</p>
+      <div className="animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <Tags className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">分类管理</h2>
+              <p className="text-xs text-muted-foreground">共 {total} 个分类</p>
+            </div>
+          </div>
+          <Button onClick={() => setShowAdd(true)} size="sm">
+            <Plus className="size-4" /> 添加分类
+          </Button>
         </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Plus className="size-4" />
-              新增分类
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form method="post" className="flex gap-4 items-end">
-              <input type="hidden" name="intent" value="create" />
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="name">分类名称</Label>
-                <Input id="name" name="name" required placeholder="请输入分类名称" />
-              </div>
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="description">描述</Label>
-                <Input id="description" name="description" placeholder="可选描述" />
-              </div>
-              <Button type="submit" disabled={isSubmitting} className="shrink-0">
-                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                添加
-              </Button>
-            </Form>
-          </CardContent>
-        </Card>
-
-        <div className="relative max-w-sm">
+        {/* Search */}
+        <div className="relative max-w-sm mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
           <Input
-            placeholder="搜索分类名称..."
+            placeholder="搜索分类..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
           />
         </div>
 
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">ID</TableHead>
-                  <TableHead>名称</TableHead>
-                  <TableHead>描述</TableHead>
-                  <TableHead>商品数</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                      <Tags className="size-8 mx-auto mb-2 opacity-50" />
-                      {search ? "没有匹配的分类" : "暂无分类数据"}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-mono text-muted-foreground">{c.id}</TableCell>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.description || "-"}</TableCell>
-                      <TableCell>{c._count.products}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteId(c.id)}
-                        >
-                          <Trash2 className="size-3.5" />
-                          删除
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <DataTablePagination totalPages={Math.ceil(total / pageSize)} currentPage={page} />
+        {/* Add form */}
+        {showAdd && (
+          <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">新增分类</h3>
+            <fetcher.Form method="post" className="flex gap-3 items-end">
+              <input type="hidden" name="intent" value="create" />
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs">分类名称</Label>
+                <Input name="name" required placeholder="请输入分类名称" />
+              </div>
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs">描述</Label>
+                <Input name="description" placeholder="可选描述" />
+              </div>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                添加
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowAdd(false)}>
+                取消
+              </Button>
+            </fetcher.Form>
+          </div>
+        )}
+
+        {/* Category grid */}
+        {filtered.length === 0 ? (
+          <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+            <FolderOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">{search ? "没有匹配的分类" : "暂无分类"}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{search ? "尝试其他关键词" : "点击上方按钮添加第一个分类"}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors group"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center shrink-0">
+                      <Tags className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{c.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{c.description || "无描述"}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDeleteId(c.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/20"
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </button>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs text-muted-foreground">{c._count.products} 件商品</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-4">
+          <DataTablePagination totalPages={Math.ceil(total / pageSize)} currentPage={page} />
+        </div>
       </div>
       )}
 
@@ -191,6 +202,14 @@ export default function CategoriesPage() {
           fetcher.submit(fd, { method: "post" });
         }}
       />
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.4s ease-out both; }
+      ` }} />
     </AppLayout>
   );
 }
