@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router";
 import type { AuthUser } from "~/lib/auth";
 import {
   LayoutDashboard, Users, Package, Tags, Truck,
-  ShoppingCart, Warehouse, Receipt, Store, Sparkles, Bell,
+  ShoppingCart, Warehouse, Receipt, Store, KeyRound, Bell,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -62,7 +62,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "用户管理", href: "/users", roles: ["admin"], icon: Users },
       { label: "通知管理", href: "/notifications", roles: ["admin"], icon: Bell },
-      { label: "AI 设置", href: "/settings/ai", roles: ["admin"], icon: Sparkles },
+      { label: "API Key 配置", href: "/settings/ai", roles: ["admin"], icon: KeyRound },
     ],
   },
 ];
@@ -79,15 +79,13 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       collapsible="icon"
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
-      {/* Header: logo stays fixed, text fades out */}
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-3">
-        <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:h-8">
-            <Store className="w-5 h-5 text-white" />
-          </div>
-          <div className="min-w-0 flex-1 overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight truncate whitespace-nowrap">SuperMarket</h2>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate whitespace-nowrap">智慧运营管理系统</p>
+      {/* Header: logo stays fixed on left, text slides out to right */}
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 px-3 py-3 group-data-[collapsible=icon]:px-2">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <Store className="w-7 h-7 text-blue-500 shrink-0" />
+          <div className="flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out max-w-[120px] opacity-100 group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">
+            <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap leading-tight">SuperMarket</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight">智慧运营系统</span>
           </div>
         </div>
       </SidebarHeader>

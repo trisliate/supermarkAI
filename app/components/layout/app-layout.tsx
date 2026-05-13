@@ -7,7 +7,15 @@ import { FloatingCat } from "~/components/pet/floating-cat";
 import { ChatWidget } from "~/components/ai-assistant/chat-widget";
 import { useFlashToast } from "~/lib/flash";
 
-export function AppLayout({ user, children }: { user: AuthUser; children: React.ReactNode }) {
+interface AppLayoutProps {
+  user: AuthUser;
+  children: React.ReactNode;
+  description?: string;
+  backTo?: string;
+  backLabel?: string;
+}
+
+export function AppLayout({ user, children, description, backTo, backLabel }: AppLayoutProps) {
   useFlashToast();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -29,8 +37,8 @@ export function AppLayout({ user, children }: { user: AuthUser; children: React.
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AppSidebar user={user} />
       <SidebarInset className="bg-slate-50 dark:bg-slate-950">
-        <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} />
-        <div className="flex-1 p-6 h-full">{children}</div>
+        <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} description={description} backTo={backTo} backLabel={backLabel} />
+        <div className="flex-1 p-6 min-h-0">{children}</div>
       </SidebarInset>
 
       {catEnabled && <FloatingCat />}

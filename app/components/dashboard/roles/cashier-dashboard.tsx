@@ -5,6 +5,7 @@ import {
   Award, AlertTriangle,
 } from "lucide-react";
 import { formatPrice } from "~/lib/utils";
+import { StatCard } from "../stat-card";
 
 interface CashierDashboardProps {
   stats: {
@@ -20,23 +21,6 @@ interface CashierDashboardProps {
   lowStockProducts?: Array<{ name: string; stock: number; unit: string }>;
 }
 
-function StatCard({ label, value, icon: Icon, color, subtitle }: {
-  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string; subtitle?: string;
-}) {
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
-        <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">{value}</span>
-        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
-
 export function CashierDashboard({
   stats, hourlySales, hotProducts, recentSales, allCashierStats, lowStockProducts,
 }: CashierDashboardProps) {
@@ -46,10 +30,10 @@ export function CashierDashboard({
     <div className="h-full flex flex-col gap-4 animate-fade-in">
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="今日销售额" value={`¥${formatPrice(stats.todaySales)}`} icon={DollarSign} color="bg-emerald-500" />
-        <StatCard label="今日订单数" value={stats.todayOrders} icon={Receipt} color="bg-blue-500" />
-        <StatCard label="客单价" value={`¥${formatPrice(stats.avgOrderValue)}`} icon={ShoppingCart} color="bg-violet-500" />
-        <StatCard label="我的订单" value={stats.myOrders} icon={User} color="bg-amber-500" subtitle="今日完成" />
+        <StatCard label="今日销售额" value={`¥${formatPrice(stats.todaySales)}`} icon={DollarSign} color="bg-emerald-500" delay={0} />
+        <StatCard label="今日订单数" value={stats.todayOrders} icon={Receipt} color="bg-blue-500" delay={50} />
+        <StatCard label="客单价" value={`¥${formatPrice(stats.avgOrderValue)}`} icon={ShoppingCart} color="bg-violet-500" delay={100} />
+        <StatCard label="我的订单" value={stats.myOrders} icon={User} color="bg-amber-500" subtitle="今日完成" delay={150} />
       </div>
 
       {/* Main grid */}
@@ -57,7 +41,7 @@ export function CashierDashboard({
         {/* Left: hourly chart + hot products — 8 cols */}
         <div className="xl:col-span-8 flex flex-col gap-4 min-h-0">
           {/* Hourly sales bar chart */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 shrink-0">
+          <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 shrink-0">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-500" />
@@ -110,7 +94,7 @@ export function CashierDashboard({
 
           {/* Hot products */}
           {hotProducts.length > 0 && (
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 min-h-0">
+            <div className="flex-1 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-500" />
@@ -144,7 +128,7 @@ export function CashierDashboard({
         <div className="xl:col-span-4 flex flex-col gap-4 min-h-0">
           {/* Recent sales */}
           {recentSales.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-500" />
@@ -173,7 +157,7 @@ export function CashierDashboard({
 
           {/* Cashier ranking */}
           {allCashierStats && allCashierStats.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Award className="w-4 h-4 text-purple-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">收银员排行</span>
@@ -199,7 +183,7 @@ export function CashierDashboard({
 
           {/* Low stock warning */}
           {lowStockProducts && lowStockProducts.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-900/50 p-4">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-amber-200 dark:border-amber-900/50 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">库存不足</span>

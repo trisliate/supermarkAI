@@ -4,6 +4,7 @@ import type { Route } from "./+types/notifications";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -104,18 +105,13 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
   }, [fetcher.state, fetcher.data]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description="发送和管理系统通知"
+    >
       <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Bell className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">通知管理</h2>
-              <p className="text-xs text-muted-foreground">发送和管理系统通知</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <div></div>
           <Button onClick={() => setShowNew(true)}>
             <Plus className="size-4" /> 发送通知
           </Button>

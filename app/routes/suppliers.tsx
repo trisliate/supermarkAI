@@ -4,6 +4,7 @@ import type { Route } from "./+types/suppliers";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -122,14 +123,14 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
   }, [suppliers, search, statusFilter]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description="管理供应商信息"
+    >
       {isLoading ? <PageSkeleton columns={7} rows={6} /> : (
       <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">供应商管理</h2>
-            <p className="text-sm text-muted-foreground mt-1">管理供应商信息</p>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <div></div>
           <Button onClick={() => setShowNew(true)}>
             <Plus className="size-4" /> 新增供应商
           </Button>

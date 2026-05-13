@@ -130,6 +130,7 @@ model PurchaseOrderItem {
   productId       Int
   quantity        Int
   unitPrice       Decimal   @db.Decimal(10, 2)
+  batchNo         String?   @db.VarChar(50) // 批次号
   productionDate  DateTime? // 生产日期
   expiryDate      DateTime? // 保质期/到期日期
 
@@ -202,10 +203,11 @@ model NotificationRead {
 
 model AIConfig {
   id           Int      @id @default(autoincrement())
-  provider     String   // dashscope, ernie, glm, moonshot, deepseek
+  provider     String   // deepseek, openai, anthropic, mimo, qwen
   apiKey       String   // encrypted
   model        String
   baseUrl      String?
+  protocol     String   @default("openai") // openai | anthropic
   isActive     Boolean  @default(false)
   systemPrompt String?  @db.Text
   lastTestedAt DateTime?

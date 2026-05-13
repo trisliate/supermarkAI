@@ -6,6 +6,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
 import type { RestockItem } from "~/lib/recommendation.server";
+import { StatCard } from "../stat-card";
 
 interface PurchaserDashboardProps {
   stats: {
@@ -36,23 +37,6 @@ const urgencyStyles: Record<string, string> = {
   critical: "bg-red-500", urgent: "bg-orange-500", watch: "bg-yellow-500", sufficient: "bg-emerald-500",
 };
 
-function StatCard({ label, value, icon: Icon, color, subtitle }: {
-  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string; subtitle?: string;
-}) {
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
-        <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">{value}</span>
-        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
-
 export function PurchaserDashboard({
   stats, restockItems, recentPurchases, suppliers,
 }: PurchaserDashboardProps) {
@@ -62,16 +46,16 @@ export function PurchaserDashboard({
     <div className="h-full flex flex-col gap-4 animate-fade-in">
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="待审批采购单" value={stats.pendingCount} icon={ShoppingCart} color="bg-amber-500" />
-        <StatCard label="本月采购总额" value={`¥${formatPrice(stats.monthlyPurchaseAmount)}`} icon={DollarSign} color="bg-blue-500" />
-        <StatCard label="活跃供应商" value={stats.activeSuppliers} icon={Truck} color="bg-cyan-500" />
-        <StatCard label="需补货商品" value={stats.needRestockCount} icon={AlertTriangle} color="bg-red-500" subtitle={stats.needRestockCount > 0 ? "请尽快处理" : "库存充足"} />
+        <StatCard label="待审批采购单" value={stats.pendingCount} icon={ShoppingCart} color="bg-amber-500" delay={0} />
+        <StatCard label="本月采购总额" value={`¥${formatPrice(stats.monthlyPurchaseAmount)}`} icon={DollarSign} color="bg-blue-500" delay={50} />
+        <StatCard label="活跃供应商" value={stats.activeSuppliers} icon={Truck} color="bg-cyan-500" delay={100} />
+        <StatCard label="需补货商品" value={stats.needRestockCount} icon={AlertTriangle} color="bg-red-500" subtitle={stats.needRestockCount > 0 ? "请尽快处理" : "库存充足"} delay={150} />
       </div>
 
       {/* Main grid */}
       <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 min-h-0">
         {/* Restock table — 8 cols */}
-        <div className="xl:col-span-8 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden flex flex-col min-h-0">
+        <div className="xl:col-span-8 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col min-h-0">
           <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -104,9 +88,9 @@ export function PurchaserDashboard({
                   {restockItems.slice(0, 15).map((item) => (
                     <tr key={item.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-1.5 h-6 rounded-full ${urgencyStyles[item.urgency]}`} />
-                          <span className="font-medium text-slate-700 dark:text-slate-200 text-[13px]">{item.productName}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`w-1.5 h-6 rounded-full shrink-0 ${urgencyStyles[item.urgency]}`} />
+                          <span className="font-medium text-slate-700 dark:text-slate-200 text-[13px] truncate">{item.productName}</span>
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right font-mono text-[13px]">{item.currentStock} {item.unit}</td>
@@ -145,7 +129,7 @@ export function PurchaserDashboard({
 
           {/* Suppliers */}
           {suppliers.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-cyan-500" />
@@ -171,7 +155,7 @@ export function PurchaserDashboard({
 
           {/* Recent purchases */}
           {recentPurchases.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-4 h-4 text-amber-500" />

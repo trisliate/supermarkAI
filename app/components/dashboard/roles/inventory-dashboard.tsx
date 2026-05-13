@@ -6,6 +6,7 @@ import {
 import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
 import type { SlowMovingItem } from "~/lib/recommendation.server";
+import { StatCard } from "../stat-card";
 
 interface InventoryDashboardProps {
   stats: {
@@ -26,23 +27,6 @@ const typeColors: Record<string, string> = {
   OUT: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-function StatCard({ label, value, icon: Icon, color, subtitle }: {
-  label: string; value: string | number; icon: React.ComponentType<{ className?: string }>; color: string; subtitle?: string;
-}) {
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex items-center gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-        <Icon className="w-5 h-5 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-400 dark:text-slate-500">{label}</p>
-        <span className="text-xl font-bold text-slate-900 dark:text-white tabular-nums">{value}</span>
-        {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
-
 export function InventoryDashboard({
   stats, inventoryStatus, alertItems, recentLogs, slowMoving,
 }: InventoryDashboardProps) {
@@ -56,10 +40,10 @@ export function InventoryDashboard({
     <div className="h-full flex flex-col gap-4 animate-fade-in">
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="商品总数" value={stats.totalProducts} icon={Package} color="bg-blue-500" />
-        <StatCard label="缺货商品" value={stats.outOfStock} icon={XCircle} color="bg-red-500" subtitle={stats.outOfStock > 0 ? "需要立即补货" : "暂无缺货"} />
-        <StatCard label="库存偏低" value={stats.lowStock} icon={AlertTriangle} color="bg-amber-500" subtitle={stats.lowStock > 0 ? "需要关注" : "库存充足"} />
-        <StatCard label="库存总值" value={`¥${formatPrice(stats.totalValue)}`} icon={DollarSign} color="bg-emerald-500" />
+        <StatCard label="商品总数" value={stats.totalProducts} icon={Package} color="bg-blue-500" delay={0} />
+        <StatCard label="缺货商品" value={stats.outOfStock} icon={XCircle} color="bg-red-500" subtitle={stats.outOfStock > 0 ? "需要立即补货" : "暂无缺货"} delay={50} />
+        <StatCard label="库存偏低" value={stats.lowStock} icon={AlertTriangle} color="bg-amber-500" subtitle={stats.lowStock > 0 ? "需要关注" : "库存充足"} delay={100} />
+        <StatCard label="库存总值" value={`¥${formatPrice(stats.totalValue)}`} icon={DollarSign} color="bg-emerald-500" delay={150} />
       </div>
 
       {/* Main grid */}
@@ -67,7 +51,7 @@ export function InventoryDashboard({
         {/* Left: status + alerts — 8 cols */}
         <div className="xl:col-span-8 flex flex-col gap-4 min-h-0">
           {/* Status bar */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 shrink-0">
+          <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 shrink-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block mb-3">库存状态分布</span>
             <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
               {statusEntries.map(([name, count]) => (
@@ -91,7 +75,7 @@ export function InventoryDashboard({
           </div>
 
           {/* Alert table */}
-          <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden flex flex-col min-h-0">
+          <div className="flex-1 bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col min-h-0">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -119,8 +103,8 @@ export function InventoryDashboard({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {alertItems.map((item) => (
                       <tr key={item.id} className={item.quantity === 0 ? "bg-red-50/50 dark:bg-red-950/10" : ""}>
-                        <td className="px-4 py-2 font-medium text-slate-700 dark:text-slate-200 text-[13px]">{item.productName}</td>
-                        <td className="px-4 py-2 text-slate-500 text-[13px]">{item.categoryName}</td>
+                        <td className="px-4 py-2 font-medium text-slate-700 dark:text-slate-200 text-[13px] max-w-[200px] truncate">{item.productName}</td>
+                        <td className="px-4 py-2 text-slate-500 text-[13px] max-w-[120px] truncate">{item.categoryName}</td>
                         <td className="px-4 py-2 text-right font-mono text-[13px]">
                           <span className={item.quantity === 0 ? "text-red-600 font-bold" : "text-amber-600 font-semibold"}>
                             {item.quantity} {item.unit}
@@ -149,7 +133,7 @@ export function InventoryDashboard({
         <div className="xl:col-span-4 flex flex-col gap-4 min-h-0">
           {/* Recent logs */}
           {recentLogs.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-500" />
@@ -179,7 +163,7 @@ export function InventoryDashboard({
 
           {/* Slow moving */}
           {slowMoving.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 flex-1 min-h-0">
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 flex-1 min-h-0">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown className="w-4 h-4 text-orange-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">滞销预警</span>

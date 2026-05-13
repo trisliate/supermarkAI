@@ -4,6 +4,7 @@ import type { Route } from "./+types/purchases.new";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn, formatPrice } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
@@ -58,7 +59,7 @@ export async function action({ request }: Route.ActionArgs) {
   const remark = formData.get("remark") as string;
 
   const itemsJson = formData.get("items") as string;
-  const items: { productId: number; quantity: number; unitPrice: number }[] = JSON.parse(itemsJson);
+  const items: { productId: number; quantity: number; unitPrice: number; batchNo?: string; productionDate?: string; expiryDate?: string }[] = JSON.parse(itemsJson);
 
   if (!supplierId || items.length === 0) {
     return { error: "请选择供应商并添加至少一项商品" };
@@ -84,6 +85,9 @@ export async function action({ request }: Route.ActionArgs) {
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          batchNo: item.batchNo || null,
+          productionDate: item.productionDate ? new Date(item.productionDate) : null,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
         })),
       },
     },
@@ -98,6 +102,9 @@ interface OrderItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  batchNo: string;
+  productionDate: string;
+  expiryDate: string;
 }
 
 export default function NewPurchasePage() {
@@ -114,6 +121,9 @@ export default function NewPurchasePage() {
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState("");
   const [selectedProductSupplier, setSelectedProductSupplier] = useState("");
+  const [batchNo, setBatchNo] = useState("");
+  const [productionDate, setProductionDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
 
   // Filter products by selected supplier (supplier-first mode)
   const availableProducts = useMemo(() => {
@@ -144,11 +154,14 @@ export default function NewPurchasePage() {
       : products.find((p) => p.id === pid);
     if (!product) return;
     if (items.some((i) => i.productId === pid)) return;
-    setItems([...items, { productId: pid, name: product.name, unit: product.unit, quantity, unitPrice: price }]);
+    setItems([...items, { productId: pid, name: product.name, unit: product.unit, quantity, unitPrice: price, batchNo, productionDate, expiryDate }]);
     setSelectedProduct("");
     setQuantity(1);
     setUnitPrice("");
     setSelectedProductSupplier("");
+    setBatchNo("");
+    setProductionDate("");
+    setExpiryDate("");
   };
 
   const updateItemQty = (index: number, delta: number) => {
@@ -171,19 +184,13 @@ export default function NewPurchasePage() {
   const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description="选择供应商并添加采购商品"
+    >
     <div className="animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">新建采购单</h2>
-            <p className="text-xs text-muted-foreground">选择供应商并添加采购商品</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-between mb-6">
+        <div></div>
         <Link to="/purchases" className={cn(buttonVariants({ variant: "outline" }), "h-9 text-xs")}>
           返回列表
         </Link>
@@ -197,7 +204,7 @@ export default function NewPurchasePage() {
       )}
 
       {/* Mode toggle + Remark */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
+      <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
             <button
@@ -288,7 +295,7 @@ export default function NewPurchasePage() {
 
       {/* Add product row (supplier-first mode) */}
       {mode === "supplier" && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
+        <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 mb-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[200px]">
               <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">商品</Label>
@@ -322,12 +329,26 @@ export default function NewPurchasePage() {
               <Plus className="size-4" /> 加入
             </Button>
           </div>
+          <div className="flex flex-wrap gap-3 items-end mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="w-36">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">批次号</Label>
+              <Input value={batchNo} onChange={(e) => setBatchNo(e.target.value)} placeholder="可选" className="h-8 text-xs" />
+            </div>
+            <div className="w-40">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">生产日期</Label>
+              <Input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="w-40">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">保质期至</Label>
+              <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Add product row (product-first mode) */}
       {mode === "product" && selectedProduct && selectedProductSupplier && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-4 mb-4">
+        <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4 mb-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex-1 min-w-[120px]">
               <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">数量</Label>
@@ -341,11 +362,25 @@ export default function NewPurchasePage() {
               <Plus className="size-4" /> 加入
             </Button>
           </div>
+          <div className="flex flex-wrap gap-3 items-end mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="w-36">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">批次号</Label>
+              <Input value={batchNo} onChange={(e) => setBatchNo(e.target.value)} placeholder="可选" className="h-8 text-xs" />
+            </div>
+            <div className="w-40">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">生产日期</Label>
+              <Input type="date" value={productionDate} onChange={(e) => setProductionDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+            <div className="w-40">
+              <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">保质期至</Label>
+              <Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="h-8 text-xs" />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Items table */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden">
+      <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">采购明细</span>
           {items.length > 0 && <span className="text-xs text-slate-400">{items.length} 项</span>}
@@ -364,6 +399,9 @@ export default function NewPurchasePage() {
                 <tr>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-500 text-xs w-12">#</th>
                   <th className="text-left px-4 py-2.5 font-medium text-slate-500 text-xs">商品</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-500 text-xs w-28">批次号</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-500 text-xs w-28">生产日期</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-slate-500 text-xs w-28">保质期至</th>
                   <th className="text-center px-4 py-2.5 font-medium text-slate-500 text-xs w-32">数量</th>
                   <th className="text-right px-4 py-2.5 font-medium text-slate-500 text-xs w-32">单价</th>
                   <th className="text-right px-4 py-2.5 font-medium text-slate-500 text-xs w-32">小计</th>
@@ -378,6 +416,9 @@ export default function NewPurchasePage() {
                       <p className="font-medium text-slate-800 dark:text-slate-200">{item.name}</p>
                       <p className="text-[10px] text-slate-400">{item.unit}</p>
                     </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500">{item.batchNo || "-"}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500">{item.productionDate || "-"}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500">{item.expiryDate || "-"}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
@@ -436,7 +477,7 @@ export default function NewPurchasePage() {
             <Form method="post">
               <input type="hidden" name="supplierId" value={supplierId} />
               <input type="hidden" name="remark" value={remark} />
-              <input type="hidden" name="items" value={JSON.stringify(items.map((c) => ({ productId: c.productId, quantity: c.quantity, unitPrice: c.unitPrice })))} />
+              <input type="hidden" name="items" value={JSON.stringify(items.map((c) => ({ productId: c.productId, quantity: c.quantity, unitPrice: c.unitPrice, batchNo: c.batchNo, productionDate: c.productionDate, expiryDate: c.expiryDate })))} />
               <div className="flex gap-2">
                 <Button
                   type="submit"

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 
 interface StatCardProps {
@@ -8,6 +9,7 @@ interface StatCardProps {
   trend?: { value: number; isUp: boolean };
   subtitle?: string;
   sparkline?: number[];
+  delay?: number;
 }
 
 function SparklineSVG({ data, color }: { data: number[]; color: string }) {
@@ -43,9 +45,18 @@ function SparklineSVG({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-export function StatCard({ label, value, icon: Icon, color, trend, subtitle, sparkline }: StatCardProps) {
+export function StatCard({ label, value, icon: Icon, color, trend, subtitle, sparkline, delay = 0 }: StatCardProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(timer);
+  }, [delay]);
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow group">
+    <div className={`bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-500 group shadow-sm ${
+      visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+    }`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{label}</p>

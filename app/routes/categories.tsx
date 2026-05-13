@@ -4,6 +4,7 @@ import type { Route } from "./+types/categories";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -87,20 +88,14 @@ export default function CategoriesPage() {
   }, [categories, search]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description={`共 ${total} 个分类`}
+    >
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
       <div className="animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Tags className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">分类管理</h2>
-              <p className="text-xs text-muted-foreground">共 {total} 个分类</p>
-            </div>
-          </div>
+          <div></div>
           <Button onClick={() => setShowAdd(true)} size="sm">
             <Plus className="size-4" /> 添加分类
           </Button>

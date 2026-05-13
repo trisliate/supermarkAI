@@ -175,3 +175,36 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
 }
+
+/* Logo breathing animation */
+@keyframes logoBreathe {
+  0%, 100% {
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.15);
+  }
+  50% {
+    box-shadow: 0 10px 25px -3px rgba(59, 130, 246, 0.4), 0 4px 12px -4px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.animate-logo-breathe {
+  animation: logoBreathe 3s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+/* Sidebar collapse animation: smooth width transition */
+[data-sidebar] {
+  transition: width 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+/* Sidebar group label fade on collapse */
+[data-sidebar] [data-sidebar-group-label] {
+  transition: opacity 200ms ease-in-out;
+}
+
+[data-sidebar][data-collapsible="icon"] [data-sidebar-group-label] {
+  opacity: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}

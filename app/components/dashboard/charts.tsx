@@ -15,7 +15,7 @@ interface ChartsProps {
 
 const muted = "#94a3b8";
 
-const PIE_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1"];
+const PIE_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
 
 const STATUS_COLORS: Record<string, string> = {
   "缺货": "#ef4444",
@@ -54,11 +54,13 @@ function ChartCard({ title, icon: Icon, children, value, subtitle, className }: 
   title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; value?: string; subtitle?: string; className?: string;
 }) {
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 ${className || ""}`}>
+    <div className={`bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-5 ${className || ""}`}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-slate-400" />
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{title}</span>
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="w-4 h-4 text-primary" />
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>
         </div>
         {value && (
           <div className="text-right">
@@ -77,8 +79,8 @@ function CategoryDonut({ data }: { data: Array<{ name: string; value: number }> 
 
   return (
     <div className="flex items-center gap-4">
-      <div className="relative w-[160px] h-[160px] shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+        <ResponsiveContainer width={160} height={160}>
           <PieChart>
             <Pie
               data={data}
@@ -122,8 +124,8 @@ function StatusDonut({ data }: { data: Record<string, number> }) {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="relative w-[160px] h-[160px] shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+        <ResponsiveContainer width={160} height={160}>
           <PieChart>
             <Pie
               data={chartData}
@@ -170,8 +172,8 @@ export function Charts({ trendData, pieData, inventoryStatus }: ChartsProps) {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* Sales trend - Area chart */}
       <ChartCard title="销售趋势" icon={TrendingUp} value={`¥${formatPrice(totalSales)}`} subtitle="近7天累计">
-        <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ width: "100%", height: 220 }}>
+          <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
@@ -191,8 +193,8 @@ export function Charts({ trendData, pieData, inventoryStatus }: ChartsProps) {
 
       {/* Purchase vs Sales - thin lines */}
       <ChartCard title="采购 vs 销售" icon={ShoppingCart}>
-        <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ width: "100%", height: 220 }}>
+          <ResponsiveContainer width="100%" height={220}>
             <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />

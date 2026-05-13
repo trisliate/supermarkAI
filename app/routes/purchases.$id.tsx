@@ -4,6 +4,7 @@ import type { Route } from "./+types/purchases.$id";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { cn, formatPrice } from "~/lib/utils";
@@ -98,12 +99,8 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
   }, [fetcher.state, fetcher.data]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} backTo="/purchases" backLabel="返回采购列表" description="采购单详情">
       <div className="max-w-3xl animate-fade-in">
-        <div className="mb-6">
-          <Link to="/purchases" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "mb-2")}><ArrowLeft className="size-4" /> 返回采购列表</Link>
-          <h2 className="text-2xl font-bold">采购单详情</h2>
-        </div>
 
         <Card className="mb-6">
           <CardHeader>

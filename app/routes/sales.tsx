@@ -4,6 +4,7 @@ import type { Route } from "./+types/sales";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { Card, CardContent } from "~/components/ui/card";
 import { buttonVariants } from "~/components/ui/button";
 import { cn, formatPrice } from "~/lib/utils";
@@ -56,22 +57,16 @@ export default function SalesPage({ loaderData }: Route.ComponentProps) {
   }, [sales, search]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description="查看所有销售订单"
+    >
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Receipt className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">销售记录</h2>
-              <p className="text-xs text-muted-foreground">查看所有销售订单</p>
-            </div>
-          </div>
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <div></div>
           <Link to="/sales/new" className={cn(buttonVariants())}>
-            <CreditCard className="size-4" />
-            收银台
+            <CreditCard className="size-4" /> 收银台
           </Link>
         </div>
 

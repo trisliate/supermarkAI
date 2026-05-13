@@ -100,10 +100,7 @@ export default function InventoryDetailPage() {
           <Link to="/inventory" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 p-0")}>
             <ArrowLeft className="size-4" />
           </Link>
-          <div>
-            <h2 className="text-lg font-bold">库存调整</h2>
-            <p className="text-xs text-muted-foreground">{inventory.product.name}</p>
-          </div>
+          <p className="text-xs text-muted-foreground">{inventory.product.name}</p>
           <Badge variant="outline" className="ml-2">{inventory.product.category.name}</Badge>
         </div>
 

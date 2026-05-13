@@ -2,6 +2,7 @@ import type { Route } from "./+types/dashboard";
 import { requireUser } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
+
 import { AdminDashboard } from "~/components/dashboard/roles/admin-dashboard";
 import { PurchaserDashboard } from "~/components/dashboard/roles/purchaser-dashboard";
 import { InventoryDashboard } from "~/components/dashboard/roles/inventory-dashboard";
@@ -316,7 +317,7 @@ export default function DashboardPage({ loaderData }: Route.ComponentProps) {
   const { user } = loaderData;
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} description={`${roleLabels[user.role]}工作台`}>
       {loaderData.role === "admin" && <AdminDashboard {...loaderData.adminData} />}
       {loaderData.role === "purchaser" && <PurchaserDashboard {...loaderData.purchaserData} />}
       {loaderData.role === "inventory_keeper" && <InventoryDashboard {...loaderData.inventoryData} />}

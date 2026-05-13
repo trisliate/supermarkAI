@@ -165,15 +165,7 @@ export default function SalesNewPage() {
       <div className="flex gap-6 h-[calc(100vh-7rem)] animate-fade-in">
         {/* Left: Product selection */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">收银台</h2>
-              <p className="text-xs text-muted-foreground">选择商品加入购物车</p>
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground mb-4">选择商品加入购物车</p>
 
           {actionData?.error && (
             <Alert variant="destructive" className="py-2 mb-4">

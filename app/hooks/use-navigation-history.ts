@@ -8,45 +8,59 @@ export function useNavigationHistory() {
   const navigate = useNavigate();
   const historyRef = useRef<string[]>([]);
   const indexRef = useRef<number>(-1);
-  const skipNextRef = useRef(false);
+  const navigatingRef = useRef(false);
   const [canBack, setCanBack] = useState(false);
   const [canForward, setCanForward] = useState(false);
 
-  const updateState = useCallback(() => {
+  const updateButtons = useCallback(() => {
     setCanBack(indexRef.current > 0);
     setCanForward(indexRef.current < historyRef.current.length - 1);
   }, []);
 
+  // Track location changes (only when not navigating via back/forward)
   useEffect(() => {
-    const path = location.pathname + location.search;
-    if (skipNextRef.current) {
-      skipNextRef.current = false;
+    if (navigatingRef.current) {
+      navigatingRef.current = false;
       return;
     }
-    // Truncate forward history when navigating to a new page
-    const truncated = historyRef.current.slice(0, indexRef.current + 1);
-    truncated.push(path);
-    if (truncated.length > MAX_HISTORY) truncated.shift();
-    historyRef.current = truncated;
-    indexRef.current = truncated.length - 1;
-    updateState();
-  }, [location.pathname, location.search, updateState]);
+
+    const path = location.pathname + location.search;
+    const history = historyRef.current;
+    const idx = indexRef.current;
+
+    // If we're at a position and navigate to a different path, truncate forward history
+    if (idx >= 0 && idx < history.length - 1) {
+      historyRef.current = history.slice(0, idx + 1);
+    }
+
+    // Don't push duplicate of current position
+    const currentHistory = historyRef.current;
+    if (currentHistory.length === 0 || currentHistory[currentHistory.length - 1] !== path) {
+      currentHistory.push(path);
+      if (currentHistory.length > MAX_HISTORY) {
+        currentHistory.shift();
+      }
+    }
+
+    indexRef.current = currentHistory.length - 1;
+    updateButtons();
+  }, [location.pathname, location.search, updateButtons]);
 
   const goBack = useCallback(() => {
     if (indexRef.current <= 0) return;
     indexRef.current--;
-    skipNextRef.current = true;
+    navigatingRef.current = true;
     navigate(historyRef.current[indexRef.current]);
-    updateState();
-  }, [navigate, updateState]);
+    updateButtons();
+  }, [navigate, updateButtons]);
 
   const goForward = useCallback(() => {
     if (indexRef.current >= historyRef.current.length - 1) return;
     indexRef.current++;
-    skipNextRef.current = true;
+    navigatingRef.current = true;
     navigate(historyRef.current[indexRef.current]);
-    updateState();
-  }, [navigate, updateState]);
+    updateButtons();
+  }, [navigate, updateButtons]);
 
   return { goBack, goForward, canBack, canForward };
 }

@@ -2,7 +2,8 @@ import { Form, Link, useLocation } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import type { AuthUser } from "~/lib/auth";
 import { roleLabels } from "~/lib/auth";
-import { Cat, Palette, LogOut, Sun, Moon, Monitor, PanelLeft, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
+import { Cat, Palette, LogOut, Sun, Moon, Monitor, PanelLeft, Sparkles, ArrowLeft, ArrowRight, LayoutDashboard, Users, Package, Tags, Truck, ShoppingCart, Warehouse, Receipt, Store, Bell, History, KeyRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { NotificationDropdown } from "~/components/notification-dropdown";
 import { AvatarWithFallback } from "~/components/ui/avatar-with-fallback";
 import { useTheme, type AccentColor } from "~/components/theme-provider";
@@ -11,20 +12,51 @@ import { useSidebar } from "~/components/ui/sidebar";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { useNavigationHistory } from "~/hooks/use-navigation-history";
 
-const pageTitles: Record<string, string> = {
-  "/dashboard": "仪表盘",
-  "/users": "用户管理",
-  "/products": "商品管理",
-  "/categories": "分类管理",
-  "/suppliers": "供应商管理",
-  "/purchases": "采购管理",
-  "/inventory": "库存管理",
-  "/inventory/log": "出入库记录",
-  "/sales": "销售管理",
-  "/sales/new": "收银台",
-  "/profile": "个人信息",
-  "/settings/ai": "AI 设置",
+const pageTitles: Record<string, { title: string; icon: LucideIcon }> = {
+  "/dashboard": { title: "仪表盘", icon: LayoutDashboard },
+  "/users/new": { title: "新增用户", icon: Users },
+  "/users/*/edit": { title: "编辑用户", icon: Users },
+  "/users": { title: "用户管理", icon: Users },
+  "/products/new": { title: "新增商品", icon: Package },
+  "/products/*/edit": { title: "编辑商品", icon: Package },
+  "/products": { title: "商品管理", icon: Package },
+  "/categories": { title: "分类管理", icon: Tags },
+  "/suppliers/new": { title: "新增供应商", icon: Truck },
+  "/suppliers/*/edit": { title: "编辑供应商", icon: Truck },
+  "/suppliers": { title: "供应商管理", icon: Truck },
+  "/purchases/new": { title: "新建采购单", icon: ShoppingCart },
+  "/purchases/*": { title: "采购详情", icon: ShoppingCart },
+  "/purchases": { title: "采购管理", icon: ShoppingCart },
+  "/inventory/log": { title: "出入库记录", icon: History },
+  "/inventory/*": { title: "库存详情", icon: Warehouse },
+  "/inventory": { title: "库存管理", icon: Warehouse },
+  "/sales/new": { title: "收银台", icon: Store },
+  "/sales": { title: "销售管理", icon: Receipt },
+  "/profile": { title: "个人信息", icon: Users },
+  "/settings/ai": { title: "API Key 配置", icon: KeyRound },
+  "/notifications": { title: "通知管理", icon: Bell },
 };
+
+function matchPageTitle(pathname: string): { title: string; icon: LucideIcon } | undefined {
+  const sorted = Object.entries(pageTitles).sort(([a], [b]) => b.length - a.length);
+  for (const [pattern, value] of sorted) {
+    if (!pattern.includes("*")) {
+      if (pathname === pattern || pathname.startsWith(pattern + "/")) return value;
+    } else {
+      const prefix = pattern.slice(0, pattern.indexOf("*"));
+      if (pathname.startsWith(prefix)) {
+        const rest = pathname.slice(prefix.length);
+        if (pattern.endsWith("*")) {
+          if (rest.length > 0 && !rest.includes("/")) return value;
+        } else {
+          const suffix = pattern.slice(pattern.indexOf("*") + 1);
+          if (rest.endsWith(suffix) && rest.length > suffix.length) return value;
+        }
+      }
+    }
+  }
+  return undefined;
+}
 
 const roleColors: Record<string, string> = {
   admin: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
@@ -49,9 +81,12 @@ interface HeaderProps {
   catEnabled: boolean;
   onToggleCat: () => void;
   onOpenChat: () => void;
+  description?: string;
+  backTo?: string;
+  backLabel?: string;
 }
 
-export function Header({ user, catEnabled, onToggleCat, onOpenChat }: HeaderProps) {
+export function Header({ user, catEnabled, onToggleCat, onOpenChat, description, backTo, backLabel }: HeaderProps) {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -69,40 +104,60 @@ export function Header({ user, catEnabled, onToggleCat, onOpenChat }: HeaderProp
     return () => document.removeEventListener("keydown", handleKey);
   }, [showSettings]);
 
-  const currentPage = Object.entries(pageTitles).find(([path]) =>
-    location.pathname === path || location.pathname.startsWith(path + "/")
-  );
+  const currentPage = matchPageTitle(location.pathname);
+  const PageIcon = currentPage?.icon;
 
   return (
     <header className="h-14 bg-white/80 dark:bg-slate-900/80 border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between px-5 backdrop-blur-md sticky top-0 z-20">
-      {/* Left: sidebar toggle + nav arrows + page title */}
-      <div className="flex items-center gap-1">
+      {/* Left: sidebar toggle + page title + nav arrows */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
         <button
           onClick={toggleSidebar}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors shrink-0"
           title="切换侧边栏 (⌘B)"
         >
           <PanelLeft className="w-4 h-4" />
         </button>
-        <button
-          onClick={goBack}
-          disabled={!canBack}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="后退"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={goForward}
-          disabled={!canForward}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="前进"
-        >
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-        <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 ml-1">
-          {currentPage?.[1] || ""}
-        </div>
+        {currentPage && PageIcon && (
+          <div className="flex items-center gap-2 min-w-0">
+            {backTo && (
+              <Link to={backTo} className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors shrink-0" title={backLabel || "返回"}>
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </Link>
+            )}
+            <div className="w-6 h-6 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+              <PageIcon className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+              {currentPage.title}
+            </span>
+            {description && (
+              <span className="text-xs text-slate-400 dark:text-slate-500 truncate hidden sm:inline">
+                {description}
+              </span>
+            )}
+          </div>
+        )}
+        {!backTo && (
+          <div className="flex items-center gap-0.5 ml-1">
+            <button
+              onClick={goBack}
+              disabled={!canBack}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="后退"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={goForward}
+              disabled={!canForward}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="前进"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right side */}

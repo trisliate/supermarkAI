@@ -143,25 +143,20 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
   }, [products, category, search]);
 
   return (
-    <AppLayout user={user}>
+    <AppLayout
+      user={user}
+      description="管理商品信息和库存"
+    >
       {isLoading ? <PageSkeleton columns={8} rows={6} /> : (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Package className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">商品管理</h2>
-              <p className="text-xs text-muted-foreground">管理商品信息和库存</p>
-            </div>
-          </div>
-          {user.role === "admin" && (
+      <div className="space-y-6 animate-fade-in">
+        {user.role === "admin" && (
+          <div className="flex items-center justify-between mb-6">
+            <div></div>
             <Button onClick={() => setShowNew(true)}>
               <Plus className="size-4" /> 新增商品
             </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 flex-wrap">
           <Tabs value={category} onValueChange={setCategory}>
