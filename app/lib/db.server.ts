@@ -11,6 +11,7 @@ const adapter = new PrismaMariaDb({
   acquireTimeout: 5000,
   idleTimeout: 30000,
   minimumIdle: 1,
+  allowPublicKeyRetrieval: true,
 });
 
 let db: PrismaClient;
