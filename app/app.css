@@ -201,18 +201,29 @@
   transition: opacity 300ms ease-in-out;
 }
 
-/* Sidebar collapse: hide text before width shrinks, show after width grows */
+/* Menu button text: always transition, fade out when collapsed to icon */
+[data-sidebar="menu-button"] > span {
+  transition: opacity 150ms ease-in-out, max-width 300ms ease-in-out;
+  max-width: 200px;
+}
 [data-collapsible="icon"] [data-sidebar="menu-button"] > span {
-  transition: opacity 150ms ease-in-out;
-}
-[data-state="collapsed"][data-collapsible="icon"] [data-sidebar="menu-button"] > span {
   opacity: 0;
+  max-width: 0;
 }
+
+/* Header text: always transition, fade out when collapsed to icon */
 [data-sidebar="header"] span {
-  transition: opacity 150ms ease-in-out;
+  transition: opacity 150ms ease-in-out, max-width 300ms ease-in-out;
+  max-width: 200px;
 }
-[data-state="collapsed"][data-sidebar="header"] span {
+[data-collapsible="icon"] [data-sidebar="header"] span {
   opacity: 0;
+  max-width: 0;
+}
+/* Logo span must always stay visible */
+[data-sidebar="header"] .sidebar-logo span {
+  opacity: 1;
+  max-width: none;
 }
 [data-sidebar="group-label"] {
   transition: max-height 150ms ease-in-out, opacity 150ms ease-in-out, margin 150ms ease-in-out, padding 150ms ease-in-out;

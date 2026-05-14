@@ -95,6 +95,34 @@ const toolMeta: Record<string, { requiredRoles?: Role[]; writeOperation?: boolea
       { key: "reason", label: "原因", type: "text" },
     ],
   },
+  get_hot_selling_products: {},
+  get_monthly_purchase_stats: {},
+  get_product_detail: {},
+  get_inventory_history: {},
+  get_users: {
+    requiredRoles: ["admin"],
+  },
+  get_supplier_products: {},
+  edit_product: {
+    requiredRoles: ["admin", "purchaser"],
+    writeOperation: true,
+    fields: [
+      { key: "productName", label: "原商品名称", type: "text", required: true },
+      { key: "newName", label: "新商品名称", type: "text" },
+      { key: "categoryName", label: "分类名称", type: "text" },
+      { key: "price", label: "售价", type: "number" },
+      { key: "unit", label: "单位", type: "text" },
+      { key: "description", label: "描述", type: "text" },
+    ],
+  },
+  toggle_product_status: {
+    requiredRoles: ["admin"],
+    writeOperation: true,
+    fields: [
+      { key: "productName", label: "商品名称", type: "text", required: true },
+      { key: "status", label: "状态", type: "select", options: ["active", "inactive"], required: true },
+    ],
+  },
 };
 
 // Tool definitions for function calling
@@ -259,6 +287,112 @@ const tools = [
           reason: { type: "string", description: "原因" },
         },
         required: ["productName", "quantity", "type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_hot_selling_products",
+      description: "获取热销商品排行（按销量排序）",
+      parameters: {
+        type: "object",
+        properties: {
+          days: { type: "number", description: "统计天数，默认7天" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_monthly_purchase_stats",
+      description: "获取本月采购总额统计",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_product_detail",
+      description: "获取某个商品的详细信息（价格、库存、分类、描述等）",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "商品名称" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_inventory_history",
+      description: "获取某商品的库存变动历史记录",
+      parameters: {
+        type: "object",
+        properties: {
+          productName: { type: "string", description: "商品名称" },
+          limit: { type: "number", description: "返回记录数，默认10" },
+        },
+        required: ["productName"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_users",
+      description: "获取系统用户列表（仅店长可用）",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_supplier_products",
+      description: "获取某供应商供应的商品列表",
+      parameters: {
+        type: "object",
+        properties: {
+          supplierName: { type: "string", description: "供应商名称" },
+        },
+        required: ["supplierName"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "edit_product",
+      description: "编辑商品信息（修改名称、分类、价格等，需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          productName: { type: "string", description: "要编辑的商品名称" },
+          newName: { type: "string", description: "新的商品名称" },
+          categoryName: { type: "string", description: "新的分类名称" },
+          price: { type: "number", description: "新的售价" },
+          unit: { type: "string", description: "新的单位" },
+          description: { type: "string", description: "新的商品描述" },
+        },
+        required: ["productName"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "toggle_product_status",
+      description: "启用或停用商品（需要确认）",
+      parameters: {
+        type: "object",
+        properties: {
+          productName: { type: "string", description: "商品名称" },
+          status: { type: "string", enum: ["active", "inactive"], description: "active=启用，inactive=停用" },
+        },
+        required: ["productName", "status"],
       },
     },
   },
@@ -491,6 +625,223 @@ async function executeTool(name: string, args: Record<string, unknown>, user?: A
       });
     }
 
+    case "get_hot_selling_products": {
+      const days = (args.days as number) || 7;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
+
+      const topItems = await db.saleOrderItem.groupBy({
+        by: ["productId"],
+        _sum: { quantity: true, unitPrice: true },
+        orderBy: { _sum: { quantity: "desc" } },
+        take: 10,
+        where: { saleOrder: { createdAt: { gte: startDate } } },
+      });
+
+      const details = await Promise.all(
+        topItems.map(async (item, i) => {
+          const product = await db.product.findUnique({
+            where: { id: item.productId },
+            select: { name: true, unit: true },
+          });
+          return {
+            rank: i + 1,
+            name: product?.name || "未知",
+            totalQuantity: item._sum.quantity || 0,
+            unit: product?.unit || "",
+          };
+        })
+      );
+
+      return JSON.stringify({ period: `近${days}天`, products: details });
+    }
+
+    case "get_monthly_purchase_stats": {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const [result, orderCount] = await Promise.all([
+        db.purchaseOrder.aggregate({
+          _sum: { totalAmount: true },
+          where: { createdAt: { gte: monthStart }, status: { not: "cancelled" } },
+        }),
+        db.purchaseOrder.count({
+          where: { createdAt: { gte: monthStart }, status: { not: "cancelled" } },
+        }),
+      ]);
+
+      const amount = Number(result._sum.totalAmount || 0);
+      return JSON.stringify({
+        month: `${now.getFullYear()}年${now.getMonth() + 1}月`,
+        totalAmount: formatPrice(amount),
+        orderCount,
+      });
+    }
+
+    case "get_product_detail": {
+      const name = args.name as string;
+      const product = await db.product.findFirst({
+        where: { name: { contains: name } },
+        include: { inventory: true, category: true },
+      });
+
+      if (!product) {
+        return JSON.stringify({ error: `未找到商品"${name}"` });
+      }
+
+      return JSON.stringify({
+        name: product.name,
+        category: product.category.name,
+        price: formatPrice(Number(product.price)),
+        unit: product.unit,
+        description: product.description || "无",
+        status: product.status === "active" ? "在售" : "已停用",
+        stock: product.inventory?.quantity ?? 0,
+        createdAt: product.createdAt.toLocaleDateString("zh-CN"),
+      });
+    }
+
+    case "get_inventory_history": {
+      const productName = args.productName as string;
+      const limit = (args.limit as number) || 10;
+
+      const product = await db.product.findFirst({
+        where: { name: { contains: productName } },
+      });
+
+      if (!product) {
+        return JSON.stringify({ error: `未找到商品"${productName}"` });
+      }
+
+      const logs = await db.inventoryLog.findMany({
+        where: { productId: product.id },
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+
+      return JSON.stringify({
+        productName: product.name,
+        records: logs.map((log) => ({
+          type: log.type === "IN" ? "入库" : "出库",
+          quantity: log.quantity,
+          reason: log.reason || "-",
+          operator: log.user.name,
+          time: log.createdAt.toLocaleString("zh-CN"),
+        })),
+      });
+    }
+
+    case "get_users": {
+      const users = await db.user.findMany({
+        select: { id: true, name: true, username: true, role: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const roleNames: Record<string, string> = {
+        admin: "店长", purchaser: "采购", inventory_keeper: "理货员", cashier: "收银员",
+      };
+
+      return JSON.stringify(users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        role: roleNames[u.role] || u.role,
+        createdAt: u.createdAt.toLocaleDateString("zh-CN"),
+      })));
+    }
+
+    case "get_supplier_products": {
+      const supplierName = args.supplierName as string;
+
+      const supplier = await db.supplier.findFirst({
+        where: { name: { contains: supplierName } },
+      });
+
+      if (!supplier) {
+        return JSON.stringify({ error: `未找到供应商"${supplierName}"` });
+      }
+
+      const supplierProducts = await db.supplierProduct.findMany({
+        where: { supplierId: supplier.id },
+        include: { product: { select: { name: true, unit: true, price: true } } },
+      });
+
+      return JSON.stringify({
+        supplierName: supplier.name,
+        products: supplierProducts.map((sp) => ({
+          name: sp.product.name,
+          unit: sp.product.unit,
+          supplyPrice: sp.price ? formatPrice(Number(sp.price)) : "未设定",
+          retailPrice: formatPrice(Number(sp.product.price)),
+        })),
+      });
+    }
+
+    case "edit_product": {
+      const productName = args.productName as string;
+      const product = await db.product.findFirst({
+        where: { name: { contains: productName } },
+      });
+
+      if (!product) {
+        return JSON.stringify({ error: `未找到商品"${productName}"` });
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (args.newName) updateData.name = args.newName as string;
+      if (args.price) updateData.price = Number(args.price);
+      if (args.unit) updateData.unit = args.unit as string;
+      if (args.description !== undefined) updateData.description = args.description as string;
+      if (args.categoryName) {
+        const category = await db.category.findFirst({ where: { name: args.categoryName as string } });
+        if (!category) {
+          return JSON.stringify({ error: `分类"${args.categoryName}"不存在` });
+        }
+        updateData.categoryId = category.id;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return JSON.stringify({ error: "请提供至少一个要修改的字段" });
+      }
+
+      await db.product.update({ where: { id: product.id }, data: updateData });
+
+      const changes = Object.entries(updateData).map(([key, val]) => {
+        const labels: Record<string, string> = { name: "名称", categoryId: "分类", price: "价格", unit: "单位", description: "描述" };
+        return `${labels[key] || key}: ${val}`;
+      }).join("，");
+
+      return JSON.stringify({
+        success: true,
+        message: `商品"${product.name}"已更新：${changes}`,
+      });
+    }
+
+    case "toggle_product_status": {
+      const productName = args.productName as string;
+      const status = args.status as "active" | "inactive";
+
+      const product = await db.product.findFirst({
+        where: { name: { contains: productName } },
+      });
+
+      if (!product) {
+        return JSON.stringify({ error: `未找到商品"${productName}"` });
+      }
+
+      await db.product.update({
+        where: { id: product.id },
+        data: { status },
+      });
+
+      return JSON.stringify({
+        success: true,
+        message: `商品"${product.name}"已${status === "active" ? "启用" : "停用"}`,
+      });
+    }
+
     default:
       return JSON.stringify({ error: "未知工具" });
   }
@@ -514,11 +865,38 @@ async function buildSystemPrompt(): Promise<string> {
 
   return `你是超市管理系统的 AI 智能助手。你的职责是帮助用户了解系统、查询数据、导航页面、指引操作。
 
-## 你可以做的：
-1. **查询数据**：库存、销售、采购、供应商、分类等实时数据
-2. **导航页面**：帮用户跳转到系统中的任何页面
-3. **指引操作**：告诉用户如何完成某项操作（如"怎么新建采购单"→引导到采购管理页面）
-4. **数据分析**：解读销售趋势、库存状态、给出建议
+## 你拥有的工具（必须通过工具调用获取数据，不要编造数据）：
+
+**查询工具（随时可用）：**
+- search_products: 按关键词搜索商品（名称、价格、库存）
+- get_product_detail: 获取某个商品的详细信息（价格、库存、分类、描述等）
+- get_low_stock_products: 查询库存不足（<10）的商品
+- get_hot_selling_products: 获取热销商品排行，可指定统计天数
+- get_sales_report: 获取销售报表，period 可选 today/week/month
+- get_supplier_info: 查询供应商信息（名称、联系人、电话）
+- get_supplier_products: 获取某供应商供应的商品列表
+- get_purchase_orders: 查询采购单，status 可选 pending/approved/received/rejected/cancelled/all
+- get_monthly_purchase_stats: 获取本月采购总额统计
+- get_categories: 获取所有商品分类及各分类商品数量
+- get_inventory_history: 获取某商品的库存变动历史记录
+- get_dashboard_stats: 获取系统全局统计数据
+- get_users: 获取系统用户列表（仅店长可用）
+- navigate: 导航到指定页面
+
+**写操作工具（需要用户确认后执行）：**
+- create_product: 创建新商品（name, categoryName, price, unit）
+- edit_product: 编辑商品信息（productName, newName/categoryName/price/unit/description 可选）
+- toggle_product_status: 启用或停用商品（productName, status=active/inactive）
+- create_supplier: 创建新供应商（name, contact, phone, address）
+- create_category: 创建新分类（name, description）
+- adjust_inventory: 调整库存（productName, quantity, type=IN/OUT, reason）
+
+## 使用规则：
+1. 用户询问数据时，**必须调用对应工具**获取实时数据，绝对不要编造数字
+2. 用户要导航到某页面时，调用 navigate 工具
+3. 用户要创建/编辑商品、供应商、分类或调整库存时，调用对应写操作工具（系统会自动弹出确认框）
+4. 复杂问题可以组合多个工具获取完整信息
+5. 如果工具返回空结果，如实告知用户
 
 ## 当前系统实时数据：
 - 活跃商品：${productCount} 个，${categoryCount} 个分类
@@ -529,8 +907,7 @@ async function buildSystemPrompt(): Promise<string> {
 ## 回答风格：
 - 简洁明了，用中文
 - 涉及数据时用表格展示
-- 涉及操作时给出具体的导航指引
-- 如果用户问的问题需要去某个页面操作，用 navigate 工具帮他们跳转`;
+- 涉及操作时给出具体的导航指引`;
 }
 
 async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
@@ -655,21 +1032,53 @@ export async function executeConfirmedTool(toolName: string, toolArgs: Record<st
   const result = await executeTool(toolName, toolArgs, user);
   const parsed = JSON.parse(result);
 
+  // Record audit log
+  if (user) {
+    try {
+      await db.auditLog.create({
+        data: {
+          userId: user.id,
+          toolName,
+          toolArgs: JSON.stringify(toolArgs),
+          result,
+          success: !parsed.error,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to write audit log:", e);
+    }
+  }
+
   if (parsed.error) {
     return { type: "text", title: "执行失败", content: parsed.error };
   }
 
   const labels: Record<string, string> = {
     create_product: "创建商品",
+    edit_product: "编辑商品",
+    toggle_product_status: "修改商品状态",
     create_supplier: "创建供应商",
     create_category: "创建分类",
     adjust_inventory: "调整库存",
   };
 
+  // Navigation after successful write operations
+  const navAfterWrite: Record<string, string> = {
+    create_product: "/products",
+    edit_product: "/products",
+    toggle_product_status: "/products",
+    create_supplier: "/suppliers",
+    create_category: "/categories",
+    adjust_inventory: "/inventory",
+  };
+
+  const navigateTo = navAfterWrite[toolName];
+
   return {
-    type: "text",
+    type: navigateTo ? "navigate" : "text",
     title: labels[toolName] || "操作完成",
     content: parsed.message || "操作已成功执行",
+    navigateTo,
   };
 }
 
@@ -694,7 +1103,7 @@ async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, 
         const functionArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
         return {
           type: "confirm",
-          title: `确认${functionName === "create_product" ? "创建商品" : functionName === "create_supplier" ? "创建供应商" : functionName === "create_category" ? "创建分类" : "调整库存"}`,
+          title: `确认${functionName === "create_product" ? "创建商品" : functionName === "edit_product" ? "编辑商品" : functionName === "toggle_product_status" ? "修改商品状态" : functionName === "create_supplier" ? "创建供应商" : functionName === "create_category" ? "创建分类" : "调整库存"}`,
           content: result.content || "AI 建议执行以下操作，请确认：",
           needsConfirmation: true,
           toolName: functionName,

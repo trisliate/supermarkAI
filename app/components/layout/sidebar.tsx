@@ -79,12 +79,12 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       collapsible="icon"
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex items-center">
-        <div className="px-4 w-full flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <div className="size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex items-center overflow-hidden">
+        <div className="px-4 w-full flex items-center justify-center gap-3 group-data-[collapsible=icon]:px-0">
+          <div className="sidebar-logo size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
             <span className="text-white text-[10px] font-black leading-none select-none">S</span>
           </div>
-          <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap group-data-[collapsible=icon]:hidden">SuperMarket</span>
+          <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap">SuperMarket</span>
         </div>
       </SidebarHeader>
 

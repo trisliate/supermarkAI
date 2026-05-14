@@ -56,6 +56,8 @@ model User {
   saleOrders        SaleOrder[]
   inventoryLogs     InventoryLog[]
   notificationReads NotificationRead[]
+  auditLogs         AuditLog[]
+  chatSessions      ChatSession[]
 }
 
 model Category {
@@ -215,4 +217,46 @@ model AIConfig {
   lastTestOk   Boolean?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  chatSessions ChatSession[]
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  toolName   String
+  toolArgs   String   @db.Text  // JSON string of arguments
+  result     String   @db.Text  // JSON string of result
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ChatSession {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  aiConfigId Int?
+  title     String   @default("新对话")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id])
+  aiConfig AIConfig?      @relation(fields: [aiConfigId], references: [id])
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id           Int      @id @default(autoincrement())
+  sessionId    Int
+  role         String   // user | assistant
+  content      String   @db.Text
+  messageType  String   @default("text") // text | table | navigate | confirm
+  data         String?  @db.Text  // JSON string for table data etc
+  navigateTo   String?
+  toolName     String?
+  toolArgs     String?  @db.Text  // JSON
+  createdAt    DateTime @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
