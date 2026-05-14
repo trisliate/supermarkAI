@@ -191,20 +191,29 @@
   will-change: box-shadow;
 }
 
-/* Sidebar collapse animation: smooth width transition */
-[data-sidebar] {
-  transition: width 300ms ease-in-out, transform 300ms ease-in-out;
+/* Sidebar group: smooth collapse spacing */
+[data-sidebar="group"] {
+  transition: margin 300ms ease-in-out, padding 300ms ease-in-out;
 }
 
-/* Sidebar group label fade on collapse — slower than width transition for visual harmony */
-[data-sidebar] [data-sidebar="group-label"] {
-  transition: opacity 500ms ease-in-out, height 500ms ease-in-out, margin 500ms ease-in-out, padding 500ms ease-in-out;
+/* Sidebar content smooth fade */
+[data-sidebar="content"] {
+  transition: opacity 300ms ease-in-out;
 }
 
-[data-sidebar][data-collapsible="icon"] [data-sidebar="group-label"] {
+/* Sidebar collapse: hide text before width shrinks, show after width grows */
+[data-collapsible="icon"] [data-sidebar="menu-button"] > span {
+  transition: opacity 150ms ease-in-out;
+}
+[data-state="collapsed"][data-collapsible="icon"] [data-sidebar="menu-button"] > span {
   opacity: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+}
+[data-sidebar="header"] span {
+  transition: opacity 150ms ease-in-out;
+}
+[data-state="collapsed"][data-sidebar="header"] span {
+  opacity: 0;
+}
+[data-sidebar="group-label"] {
+  transition: max-height 150ms ease-in-out, opacity 150ms ease-in-out, margin 150ms ease-in-out, padding 150ms ease-in-out;
 }

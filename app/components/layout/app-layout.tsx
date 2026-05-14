@@ -39,7 +39,7 @@ export function AppLayout({ user, children, description, backTo, backLabel, acti
       <AppSidebar user={user} />
       <SidebarInset className="bg-slate-50 dark:bg-slate-950">
         <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} description={description} backTo={backTo} backLabel={backLabel} actions={actions} />
-        <div className="flex-1 p-6 pb-12 min-h-0">{children}</div>
+        <div className="flex-1 px-8 py-6 pb-12 min-h-0">{children}</div>
       </SidebarInset>
 
       {catEnabled && <FloatingCat />}

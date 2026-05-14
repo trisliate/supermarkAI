@@ -1,12 +1,12 @@
-import { Form, useNavigation, Link, useActionData } from "react-router";
+import { Form, useNavigation, useActionData } from "react-router";
 import { useState, useMemo } from "react";
 import type { Route } from "./+types/purchases.new";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
 import { AppLayout } from "~/components/layout/app-layout";
 
-import { Button, buttonVariants } from "~/components/ui/button";
-import { cn, formatPrice } from "~/lib/utils";
+import { Button } from "~/components/ui/button";
+import { formatPrice } from "~/lib/utils";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
@@ -198,13 +198,10 @@ export default function NewPurchasePage() {
     <AppLayout
       user={user}
       description="选择供应商并添加采购商品"
+      backTo="/purchases"
+      backLabel="返回采购列表"
     >
     <div className="animate-fade-in">
-      <div className="flex justify-end mb-4">
-        <Link to="/purchases" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
-          返回列表
-        </Link>
-      </div>
       {actionData?.error && (
         <Alert variant="destructive" className="py-2 mb-4">
           <AlertCircle className="size-4" />

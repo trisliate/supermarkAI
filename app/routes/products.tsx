@@ -18,7 +18,7 @@ import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SearchableSelect } from "~/components/ui/searchable-select";
-import { Plus, Pencil, Trash2, Package, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, Loader2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
 
@@ -29,7 +29,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
 
-  const [products, total, categories] = await Promise.all([
+  const [products, total, categories, suppliers, supplierProducts] = await Promise.all([
     db.product.findMany({
       include: { category: true, inventory: true },
       orderBy: { createdAt: "desc" },
@@ -38,9 +38,19 @@ export async function loader({ request }: Route.LoaderArgs) {
     }),
     db.product.count(),
     db.category.findMany({ orderBy: { name: "asc" } }),
+    db.supplier.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.supplierProduct.findMany({ select: { supplierId: true, productId: true } }),
   ]);
   const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price) }));
-  return { user, products: serializedProducts, categories, total, page, pageSize: PAGE_SIZE };
+
+  // Build productId -> supplierId[] map
+  const bindingMap: Record<number, number[]> = {};
+  for (const sp of supplierProducts) {
+    if (!bindingMap[sp.productId]) bindingMap[sp.productId] = [];
+    bindingMap[sp.productId].push(sp.supplierId);
+  }
+
+  return { user, products: serializedProducts, categories, suppliers, bindingMap, total, page, pageSize: PAGE_SIZE };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -92,11 +102,25 @@ export async function action({ request }: Route.ActionArgs) {
     return { ok: true, intent: "create" };
   }
 
+  if (intent === "update_bindings") {
+    const productId = Number(formData.get("productId"));
+    const supplierIdsStr = formData.get("supplierIds") as string;
+    const supplierIds = supplierIdsStr ? supplierIdsStr.split(",").map(Number).filter(Boolean) : [];
+
+    await db.$transaction([
+      db.supplierProduct.deleteMany({ where: { productId } }),
+      ...(supplierIds.length > 0
+        ? [db.supplierProduct.createMany({ data: supplierIds.map((supplierId) => ({ supplierId, productId })), skipDuplicates: true })]
+        : []),
+    ]);
+    return { ok: true, intent: "update_bindings" };
+  }
+
   return { ok: false };
 }
 
 export default function ProductsPage({ loaderData }: Route.ComponentProps) {
-  const { user, products, categories, total, page, pageSize } = loaderData;
+  const { user, products, categories, suppliers, bindingMap, total, page, pageSize } = loaderData;
   const fetcher = useFetcher();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editProduct, setEditProduct] = useState<typeof products[number] | null>(null);
@@ -105,6 +129,8 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
   const [editCategoryId, setEditCategoryId] = useState("");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const [bindingProduct, setBindingProduct] = useState<typeof products[number] | null>(null);
+  const [selectedSupplierIds, setSelectedSupplierIds] = useState<number[]>([]);
   const isDeleting = fetcher.state !== "idle";
   const isSaving = fetcher.state !== "idle";
   const navigation = useNavigation();
@@ -122,6 +148,9 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
         toast.success("商品创建成功");
         setShowNew(false);
         setNewCategoryId("");
+      } else if (fetcher.data.intent === "update_bindings" && fetcher.data.ok) {
+        toast.success("供应商绑定已更新");
+        setBindingProduct(null);
       } else if (fetcher.data.error) {
         toast.error(fetcher.data.error);
       }
@@ -148,7 +177,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
       description="管理商品信息和库存"
     >
       {isLoading ? <PageSkeleton columns={8} rows={6} /> : (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
         <div className="flex items-center gap-3 flex-wrap">
           {user.role === "admin" && (
             <Button onClick={() => setShowNew(true)} size="sm" className="shrink-0">
@@ -229,6 +258,9 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                         <TableCell className="text-right">
                           {user.role === "admin" ? (
                             <div className="flex items-center justify-end gap-0.5">
+                              <Button variant="ghost" size="sm" className="h-7 px-2" title="管理供应商" onClick={() => { setBindingProduct(p); setSelectedSupplierIds(bindingMap[p.id] || []); }}>
+                                <Truck className="size-3.5" />
+                              </Button>
                               <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => { setEditProduct(p); setEditCategoryId(String(p.categoryId)); }}>
                                 <Pencil className="size-3.5" />
                               </Button>
@@ -388,6 +420,62 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
           fetcher.submit(fd, { method: "post" });
         }}
       />
+
+      {/* Supplier Binding Dialog */}
+      <Dialog open={bindingProduct !== null} onOpenChange={(open) => { if (!open) setBindingProduct(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="size-4" /> 管理供应商 - {bindingProduct?.name}
+            </DialogTitle>
+            <DialogDescription>选择供应该商品的供应商</DialogDescription>
+          </DialogHeader>
+          {bindingProduct && (
+            <div className="space-y-3">
+              <div className="max-h-[400px] overflow-y-auto space-y-0.5 border rounded-lg p-1">
+                {suppliers.map((s) => (
+                  <label key={s.id} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedSupplierIds.includes(s.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedSupplierIds([...selectedSupplierIds, s.id]);
+                        } else {
+                          setSelectedSupplierIds(selectedSupplierIds.filter((id) => id !== s.id));
+                        }
+                      }}
+                      className="rounded size-4"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-200">{s.name}</span>
+                  </label>
+                ))}
+                {suppliers.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-4">暂无供应商</p>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400">已选择 {selectedSupplierIds.length} 个供应商</p>
+              <div className="flex gap-3 pt-1">
+                <Button
+                  size="sm"
+                  disabled={isSaving}
+                  onClick={() => {
+                    const fd = new FormData();
+                    fd.set("intent", "update_bindings");
+                    fd.set("productId", String(bindingProduct.id));
+                    fd.set("supplierIds", selectedSupplierIds.join(","));
+                    fetcher.submit(fd, { method: "post" });
+                  }}
+                >
+                  {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
+                  保存绑定
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setBindingProduct(null)}>取消</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

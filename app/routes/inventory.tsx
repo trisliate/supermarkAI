@@ -101,7 +101,7 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
       description="查看和管理商品库存"
     >
       {isLoading ? <PageSkeleton columns={7} rows={6} /> : (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">

@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Link } from "react-router";
 import {
   Package, Truck, ShoppingCart, AlertTriangle, DollarSign, Users,
-  TrendingUp, Clock, ArrowRight, UserCheck, Activity, BarChart3, ArrowUpRight, ArrowDownRight, CalendarClock,
+  TrendingUp, Clock, ArrowRight, UserCheck, Activity, ArrowUpRight, ArrowDownRight, CalendarClock,
 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -37,27 +37,41 @@ export function AdminDashboard({
     ? Math.round(((stats.todaySalesAmount - stats.yesterdaySalesAmount) / stats.yesterdaySalesAmount) * 100)
     : 0;
 
+  const revenueTarget = Math.round(stats.yesterdaySalesAmount * 1.2);
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* 核心指标卡片 - 2行3列 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* 今日营收 - 主指标 */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-5 h-5" />
+    <div className="space-y-8 animate-fade-in">
+      {/* 今日营收 - 全宽 Hero 横幅 */}
+      <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <DollarSign className="w-6 h-6" />
             </div>
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${salesTrend >= 0 ? "bg-white/20" : "bg-red-500/30"}`}>
-              {salesTrend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-              {Math.abs(salesTrend)}%
+            <div>
+              <p className="text-sm text-white/80">今日营收</p>
+              <p className="text-4xl font-bold tracking-tight">¥{formatPrice(stats.todaySalesAmount)}</p>
             </div>
           </div>
-          <p className="text-sm text-white/80 mb-1">今日营收</p>
-          <p className="text-3xl font-bold tracking-tight">¥{formatPrice(stats.todaySalesAmount)}</p>
-          <p className="text-xs text-white/60 mt-2">昨日 ¥{formatPrice(stats.yesterdaySalesAmount)}</p>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs text-white/60">昨日营收</p>
+              <p className="text-lg font-semibold">¥{formatPrice(stats.yesterdaySalesAmount)}</p>
+            </div>
+            <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${salesTrend >= 0 ? "bg-white/20" : "bg-red-500/30"}`}>
+              {salesTrend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+              {Math.abs(salesTrend)}%
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-white/60">目标</p>
+              <p className="text-lg font-semibold">¥{formatPrice(revenueTarget)}</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* 待审批采购 */}
+      {/* 待审批采购 + 库存预警 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link to="/purchases" className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:border-amber-300 dark:hover:border-amber-700 transition-all group">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-amber-50 dark:bg-amber-950/30 rounded-xl flex items-center justify-center">
@@ -70,7 +84,6 @@ export function AdminDashboard({
           <p className="text-xs text-slate-400 mt-2">点击查看详情</p>
         </Link>
 
-        {/* 库存预警 */}
         <Link to="/inventory" className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 hover:shadow-lg hover:border-red-300 dark:hover:border-red-700 transition-all group">
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 bg-red-50 dark:bg-red-950/30 rounded-xl flex items-center justify-center">
@@ -93,28 +106,21 @@ export function AdminDashboard({
       </div>
 
       {/* 图表区域 */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 p-5 pb-0">
-          <div className="w-8 h-8 bg-blue-50 dark:bg-blue-950/30 rounded-lg flex items-center justify-center">
-            <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+      <Suspense
+        fallback={
+          <div className="h-[300px]">
+            <Skeleton className="h-full w-full rounded-xl" />
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">销售趋势</h3>
-            <p className="text-xs text-slate-400">近30天销售与采购数据</p>
-          </div>
-        </div>
-        <div className="p-5">
-          <Suspense
-            fallback={
-              <div className="h-[300px]">
-                <Skeleton className="h-full w-full rounded-xl" />
-              </div>
-            }
-          >
-            <Charts trendData={trendData} pieData={pieData} inventoryStatus={inventoryStatus} />
-          </Suspense>
-        </div>
-      </div>
+        }
+      >
+        <Charts
+          trendData={trendData}
+          pieData={pieData}
+          inventoryStatus={inventoryStatus}
+          todayAmount={stats.todaySalesAmount}
+          targetAmount={revenueTarget}
+        />
+      </Suspense>
 
       {/* 底部数据面板 - 三列 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

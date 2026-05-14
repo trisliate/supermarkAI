@@ -212,6 +212,7 @@ model AIConfig {
   systemPrompt String?  @db.Text
   lastTestedAt DateTime?
   lastTestMs   Int?
+  lastTestOk   Boolean?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

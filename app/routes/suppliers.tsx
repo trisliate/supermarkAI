@@ -26,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-  const [total, suppliers] = await Promise.all([
+  const [total, suppliers, products, supplierProducts] = await Promise.all([
     db.supplier.count(),
     db.supplier.findMany({
       orderBy: { name: "asc" },
@@ -34,8 +34,18 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
       include: { _count: { select: { supplierProducts: true } } },
     }),
+    db.product.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true, unit: true } }),
+    db.supplierProduct.findMany({ select: { supplierId: true, productId: true } }),
   ]);
-  return { user, suppliers, total, page, pageSize: PAGE_SIZE };
+
+  // Build supplierId -> productId[] map
+  const bindingMap: Record<number, number[]> = {};
+  for (const sp of supplierProducts) {
+    if (!bindingMap[sp.supplierId]) bindingMap[sp.supplierId] = [];
+    bindingMap[sp.supplierId].push(sp.productId);
+  }
+
+  return { user, suppliers, products, bindingMap, total, page, pageSize: PAGE_SIZE };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -81,17 +91,34 @@ export async function action({ request }: Route.ActionArgs) {
     return { ok: true, intent: "create" };
   }
 
+  if (intent === "update_bindings") {
+    const supplierId = Number(formData.get("supplierId"));
+    const productIdsStr = formData.get("productIds") as string;
+    const productIds = productIdsStr ? productIdsStr.split(",").map(Number).filter(Boolean) : [];
+
+    await db.$transaction([
+      db.supplierProduct.deleteMany({ where: { supplierId } }),
+      ...(productIds.length > 0
+        ? [db.supplierProduct.createMany({ data: productIds.map((productId) => ({ supplierId, productId })), skipDuplicates: true })]
+        : []),
+    ]);
+    return { ok: true, intent: "update_bindings" };
+  }
+
   return { ok: false };
 }
 
 export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
-  const { user, suppliers, total, page, pageSize } = loaderData;
+  const { user, suppliers, products, bindingMap, total, page, pageSize } = loaderData;
   const fetcher = useFetcher();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editSupplier, setEditSupplier] = useState<typeof suppliers[number] | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [bindingSupplier, setBindingSupplier] = useState<typeof suppliers[number] | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  const [bindingSearch, setBindingSearch] = useState("");
   const isDeleting = fetcher.state !== "idle";
   const isSaving = fetcher.state !== "idle";
   const navigation = useNavigation();
@@ -108,6 +135,9 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
       } else if (fetcher.data.intent === "create" && fetcher.data.ok) {
         toast.success("供应商创建成功");
         setShowNew(false);
+      } else if (fetcher.data.intent === "update_bindings" && fetcher.data.ok) {
+        toast.success("商品绑定已更新");
+        setBindingSupplier(null);
       } else if (fetcher.data.error) {
         toast.error(fetcher.data.error);
       }
@@ -194,6 +224,9 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => { setBindingSupplier(s); setSelectedProductIds(bindingMap[s.id] || []); setBindingSearch(""); }}>
+                            <Package className="size-3.5" /> 货物
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditSupplier(s)}>
                             <Pencil className="size-3.5" /> 编辑
                           </Button>
@@ -323,6 +356,83 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
           fetcher.submit(fd, { method: "post" });
         }}
       />
+
+      {/* Binding Dialog */}
+      <Dialog open={bindingSupplier !== null} onOpenChange={(open) => { if (!open) setBindingSupplier(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="size-4" /> 管理商品 - {bindingSupplier?.name}
+            </DialogTitle>
+            <DialogDescription>选择该供应商供应的商品</DialogDescription>
+          </DialogHeader>
+          {bindingSupplier && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+                  <Input placeholder="搜索商品..." value={bindingSearch} onChange={(e) => setBindingSearch(e.target.value)} className="pl-9 h-8 text-xs" />
+                </div>
+                <Button variant="outline" size="sm" className="h-8 text-[11px] shrink-0" onClick={() => {
+                  const filtered = products.filter((p) => !bindingSearch || p.name.includes(bindingSearch));
+                  const allSelected = filtered.every((p) => selectedProductIds.includes(p.id));
+                  if (allSelected) {
+                    setSelectedProductIds(selectedProductIds.filter((id) => !filtered.some((p) => p.id === id)));
+                  } else {
+                    const newIds = new Set([...selectedProductIds, ...filtered.map((p) => p.id)]);
+                    setSelectedProductIds([...newIds]);
+                  }
+                }}>
+                  {products.filter((p) => !bindingSearch || p.name.includes(bindingSearch)).every((p) => selectedProductIds.includes(p.id)) ? "取消全选" : "全选"}
+                </Button>
+              </div>
+              <div className="max-h-[400px] overflow-y-auto space-y-0.5 border rounded-lg p-1">
+                {products
+                  .filter((p) => !bindingSearch || p.name.includes(bindingSearch))
+                  .map((p) => (
+                    <label key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.includes(p.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProductIds([...selectedProductIds, p.id]);
+                          } else {
+                            setSelectedProductIds(selectedProductIds.filter((id) => id !== p.id));
+                          }
+                        }}
+                        className="rounded size-4"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200">{p.name}</span>
+                      <span className="text-[10px] text-slate-400 ml-auto">{p.unit}</span>
+                    </label>
+                  ))}
+                {products.filter((p) => !bindingSearch || p.name.includes(bindingSearch)).length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-4">没有匹配的商品</p>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400">已选择 {selectedProductIds.length} 个商品</p>
+              <div className="flex gap-3 pt-1">
+                <Button
+                  size="sm"
+                  disabled={isSaving}
+                  onClick={() => {
+                    const fd = new FormData();
+                    fd.set("intent", "update_bindings");
+                    fd.set("supplierId", String(bindingSupplier.id));
+                    fd.set("productIds", selectedProductIds.join(","));
+                    fetcher.submit(fd, { method: "post" });
+                  }}
+                >
+                  {isSaving ? <Loader2 className="size-4 animate-spin" /> : null}
+                  保存绑定
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setBindingSupplier(null)}>取消</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

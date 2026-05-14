@@ -33,17 +33,17 @@ interface ChatMessage {
 }
 
 const providerBaseUrls: Record<string, string> = {
-  dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  deepseek: "https://api.deepseek.com/v1",
-  mimo: "https://token-plan-sgp.xiaomimimo.com/anthropic",
-  glm: "https://open.bigmodel.cn/api/paas/v4",
-  moonshot: "https://api.moonshot.cn/v1",
+  dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+  deepseek: "https://api.deepseek.com/v1/chat/completions",
+  mimo: "https://token-plan-sgp.xiaomimimo.com/anthropic/v1/messages",
+  glm: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+  moonshot: "https://api.moonshot.cn/v1/chat/completions",
   ernie: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat",
-  doubao: "https://ark.cn-beijing.volces.com/api/v3",
-  hunyuan: "https://api.hunyuan.cloud.tencent.com/v1",
-  yi: "https://api.lingyiwanwu.com/v1",
-  minimax: "https://api.minimax.chat/v1",
-  spark: "https://spark-api-open.xf-yun.com/v1",
+  doubao: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+  hunyuan: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+  yi: "https://api.lingyiwanwu.com/v1/chat/completions",
+  minimax: "https://api.minimax.chat/v1/chat/completions",
+  spark: "https://spark-api-open.xf-yun.com/v1/chat/completions",
 };
 
 // Tool metadata for permission control
@@ -263,6 +263,15 @@ const tools = [
     },
   },
 ];
+
+// Convert OpenAI tool format to Anthropic format
+function toAnthropicTools() {
+  return tools.map((t) => ({
+    name: t.function.name,
+    description: t.function.description,
+    input_schema: t.function.parameters,
+  }));
+}
 
 async function executeTool(name: string, args: Record<string, unknown>, user?: AuthUser): Promise<string> {
   const meta = toolMeta[name];
@@ -525,16 +534,39 @@ async function buildSystemPrompt(): Promise<string> {
 }
 
 async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
-  const baseUrl = config.baseUrl || providerBaseUrls[config.provider] || "";
+  const url = config.baseUrl || providerBaseUrls[config.provider] || "";
   const decryptedKey = decrypt(config.apiKey);
   const protocol = config.protocol || "openai";
 
   if (protocol === "anthropic") {
-    // Anthropic native protocol
     const systemMsg = messages.find((m) => m.role === "system");
     const nonSystemMsgs = messages.filter((m) => m.role !== "system");
 
-    const res = await fetch(`${baseUrl}/v1/messages`, {
+    // Convert internal messages to Anthropic content-block format
+    const anthropicMessages = nonSystemMsgs.map((m) => {
+      if (m.role === "tool") {
+        return {
+          role: "user",
+          content: [{ type: "tool_result", tool_use_id: m.tool_call_id, content: m.content || "" }],
+        };
+      }
+      if (m.role === "assistant" && m.tool_calls && m.tool_calls.length > 0) {
+        const blocks: Array<Record<string, unknown>> = [];
+        if (m.content) blocks.push({ type: "text", text: m.content });
+        for (const tc of m.tool_calls) {
+          blocks.push({
+            type: "tool_use",
+            id: tc.id,
+            name: tc.function.name,
+            input: typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments,
+          });
+        }
+        return { role: "assistant", content: blocks };
+      }
+      return { role: m.role === "assistant" ? "assistant" : "user", content: m.content || "" };
+    });
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -544,8 +576,11 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
       body: JSON.stringify({
         model: config.model,
         max_tokens: 1024,
+        temperature: 0.7,
         system: systemMsg?.content || undefined,
-        messages: nonSystemMsgs.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content || "" })),
+        messages: anthropicMessages,
+        tools: toAnthropicTools(),
+        tool_choice: { type: "auto" },
       }),
     });
 
@@ -555,12 +590,21 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
     }
 
     const data = await res.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === "text");
-    return { content: textBlock?.text || "" };
+    const contentBlocks: Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }> = data.content || [];
+    const textContent = contentBlocks.filter((b) => b.type === "text").map((b) => b.text || "").join("");
+    const toolCalls: LLMToolCall[] = contentBlocks
+      .filter((b) => b.type === "tool_use")
+      .map((b) => ({
+        id: b.id!,
+        type: "function" as const,
+        function: { name: b.name!, arguments: JSON.stringify(b.input || {}) },
+      }));
+
+    return { content: textContent, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
   }
 
   // OpenAI-compatible protocol (default)
-  const res = await fetch(`${baseUrl}/chat/completions`, {
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

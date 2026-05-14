@@ -32,7 +32,7 @@ const providers: ProviderDef[] = [
     value: "deepseek",
     label: "DeepSeek",
     logo: "https://s1.aigei.com/src/img/png/03/0305d15156154b85a80848ae4edd22ab.png?imageMogr2/auto-orient/thumbnail/!282x282r/gravity/Center/crop/282x282/quality/85/%7CimageView2/2/w/282&e=2051020800&token=P7S2Xpzfz11vAkASLTkfHN7Fw-oOZBecqeJaxypL:eFZ0GvEP17SkCu1zdapd0tTtlTw=",
-    baseUrl: "https://api.deepseek.com/v1",
+    baseUrl: "https://api.deepseek.com/v1/chat/completions",
     models: ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-reasoner"],
     color: "#2563eb",
     website: "https://platform.deepseek.com",
@@ -43,7 +43,7 @@ const providers: ProviderDef[] = [
     value: "openai",
     label: "OpenAI",
     logo: "https://cdn.worldvectorlogo.com/logos/openai-2.svg",
-    baseUrl: "https://api.openai.com/v1",
+    baseUrl: "https://api.openai.com/v1/chat/completions",
     models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
     color: "#10a37f",
     website: "https://platform.openai.com",
@@ -54,7 +54,7 @@ const providers: ProviderDef[] = [
     value: "anthropic",
     label: "Anthropic",
     logo: "https://ts4.tc.mm.bing.net/th/id/OIP-C.4h_PSQu0OZy9Q3NL0rHlowHaHa?rs=1&pid=ImgDetMain&o=7&rm=3",
-    baseUrl: "https://api.anthropic.com",
+    baseUrl: "https://api.anthropic.com/v1/messages",
     models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250414", "claude-3-5-sonnet-20241022"],
     color: "#d97706",
     website: "https://console.anthropic.com",
@@ -65,8 +65,8 @@ const providers: ProviderDef[] = [
     value: "mimo",
     label: "MiMo",
     logo: "https://tse1-mm.cn.bing.net/th/id/OIP-C.exWGUuviU0ymMhb1OBiUNwHaD4?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3",
-    baseUrl: "https://token-plan-sgp.xiaomimimo.com/anthropic",
-    models: ["mimo-2.5", "mimo-2.5-pro"],
+    baseUrl: "https://token-plan-sgp.xiaomimimo.com/anthropic/v1/messages",
+    models: ["mimo-v2.5", "mimo-v2.5-pro"],
     color: "#ff6900",
     website: "https://github.com/XiaomiMiMo/MiMo",
     description: "小米 MiMo · 轻量高效",
@@ -76,7 +76,7 @@ const providers: ProviderDef[] = [
     value: "qwen",
     label: "通义千问",
     logo: "https://freepnglogo.com/images/all_img/qwen-logo-a639.png",
-    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
     models: ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
     color: "#7c3aed",
     website: "https://dashscope.console.aliyun.com",
@@ -93,6 +93,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     apiKey: "••••••••" + c.apiKey.slice(-8),
     lastTestedAt: c.lastTestedAt?.toISOString() ?? null,
     lastTestMs: c.lastTestMs,
+    lastTestOk: c.lastTestOk,
   }));
   return { user, configs: masked };
 }
@@ -170,7 +171,7 @@ export async function action({ request }: Route.ActionArgs) {
 
       let res: Response;
       if (protocol === "anthropic") {
-        res = await fetch(`${baseUrl}/v1/messages`, {
+        res = await fetch(baseUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -184,7 +185,7 @@ export async function action({ request }: Route.ActionArgs) {
           }),
         });
       } else {
-        res = await fetch(`${baseUrl}/chat/completions`, {
+        res = await fetch(baseUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -201,6 +202,7 @@ export async function action({ request }: Route.ActionArgs) {
       const elapsed = Date.now() - start;
       if (!res.ok) {
         const errText = await res.text();
+        await db.aIConfig.update({ where: { id }, data: { lastTestedAt: new Date(), lastTestMs: null, lastTestOk: false } });
         return { error: `连接失败 (${res.status}): ${errText.slice(0, 200)}` };
       }
       const data = await res.json();
@@ -210,7 +212,7 @@ export async function action({ request }: Route.ActionArgs) {
       } else {
         reply = data.choices?.[0]?.message?.content || "";
       }
-      await db.aIConfig.update({ where: { id }, data: { lastTestedAt: new Date(), lastTestMs: elapsed } });
+      await db.aIConfig.update({ where: { id }, data: { lastTestedAt: new Date(), lastTestMs: elapsed, lastTestOk: true } });
       return { ok: true, intent: "test", elapsed, reply: reply.slice(0, 50) };
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -309,7 +311,8 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
   const pDef = activeProvider ? getProviderDef(activeProvider) : null;
   const allModels = pDef?.models || [];
 
-  function getLatencyHealth(ms: number | null): { label: string; color: string; Icon: typeof Wifi } {
+  function getLatencyHealth(ms: number | null, ok?: boolean | null): { label: string; color: string; Icon: typeof Wifi } {
+    if (ok === false) return { label: "异常", color: "text-red-600 dark:text-red-400", Icon: WifiOff };
     if (ms === null) return { label: "未测试", color: "text-slate-400", Icon: WifiOff };
     if (ms < 1000) return { label: "优", color: "text-emerald-600 dark:text-emerald-400", Icon: Wifi };
     if (ms < 3000) return { label: "良", color: "text-amber-600 dark:text-amber-400", Icon: Wifi };
@@ -387,7 +390,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">使用中</span>
                     )}
                     {(() => {
-                      const health = getLatencyHealth(config.lastTestMs);
+                      const health = getLatencyHealth(config.lastTestMs, config.lastTestOk);
                       return (
                         <span className={`flex items-center gap-0.5 text-[10px] font-medium ${health.color} ml-auto`}>
                           <health.Icon className="size-3" />
@@ -421,7 +424,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
                       <input type="hidden" name="intent" value="test" />
                       <input type="hidden" name="id" value={config.id} />
                       <Button type="submit" variant="outline" size="sm" className="h-6 text-[10px] px-2" disabled={isSaving}>
-                        <Zap className="size-2.5" /> 测速
+                        <Zap className="size-2.5" /> 测试
                       </Button>
                     </fetcher.Form>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive ml-auto" onClick={() => setDeleteId(config.id)} disabled={isSaving}>

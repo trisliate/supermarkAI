@@ -79,14 +79,12 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       collapsible="icon"
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
-      {/* Header: logo stays fixed on left, text slides out to right */}
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 px-3 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
-        <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
-          <Store className="text-blue-500 shrink-0 w-7 h-7 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:h-4 transition-[width,height] duration-300 ease-in-out" />
-          <div className="flex flex-col min-w-0 overflow-hidden max-w-[120px] opacity-100 group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0" style={{ transition: "max-width 300ms ease-in-out, opacity 200ms ease-in-out" }}>
-            <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap leading-tight">SuperMarket</span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight">智慧运营系统</span>
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex items-center">
+        <div className="px-4 w-full flex items-center gap-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <div className="size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
+            <span className="text-white text-[10px] font-black leading-none select-none">S</span>
           </div>
+          <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap group-data-[collapsible=icon]:hidden">SuperMarket</span>
         </div>
       </SidebarHeader>
 
@@ -96,7 +94,7 @@ export function AppSidebar({ user }: { user: AuthUser }) {
           if (filteredItems.length === 0) return null;
 
           return (
-            <SidebarGroup key={gi} className="group-data-[collapsible=icon]:p-0">
+            <SidebarGroup key={gi} className="overflow-hidden group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:m-0">
               {group.label && (
                 <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 mb-1">
                   {group.label}

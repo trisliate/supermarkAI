@@ -1,19 +1,17 @@
 import { useMemo } from "react";
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  AreaChart, Area, BarChart, Bar,
+  RadialBarChart, RadialBar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell,
 } from "recharts";
-import { TrendingUp, ShoppingCart, Package, AlertTriangle, BarChart3, Target } from "lucide-react";
+import { TrendingUp, Package, AlertTriangle, BarChart3, Gauge } from "lucide-react";
 import { formatPrice } from "~/lib/utils";
 
 interface ChartsProps {
   trendData: Array<{ date: string; 销售额: number; 采购额: number }>;
   pieData: Array<{ name: string; value: number }>;
   inventoryStatus: Record<string, number>;
-  barData?: Array<{ name: string; value: number; fill?: string }>;
-  radarData?: Array<{ subject: string; value: number; fullMark: number }>;
 }
 
 const muted = "#94a3b8";
@@ -27,28 +25,20 @@ const STATUS_COLORS: Record<string, string> = {
   "充足": "#3b82f6",
 };
 
-function MiniTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ color?: string; value?: number }>; label?: string }) {
+function MiniTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ color?: string; value?: number; dataKey?: string }>; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
       <p className="text-[11px] text-slate-400 mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: p.color }}>
-          ¥{formatPrice(p.value ?? 0)}
-        </p>
+        <div key={i} className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="text-[11px] text-slate-500">{p.dataKey}</span>
+          <span className="text-sm font-semibold" style={{ color: p.color }}>
+            ¥{formatPrice(p.value ?? 0)}
+          </span>
+        </div>
       ))}
-    </div>
-  );
-}
-
-function PieTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name?: string; value?: number; payload?: { percent?: number } }> }) {
-  if (!active || !payload?.length) return null;
-  const item = payload[0];
-  const pct = item.payload?.percent;
-  return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
-      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</p>
-      <p className="text-xs text-slate-500">{item.value} 个{pct != null ? ` · ${(pct * 100).toFixed(1)}%` : ""}</p>
     </div>
   );
 }
@@ -99,7 +89,18 @@ function CategoryDonut({ data }: { data: Array<{ name: string; value: number }> 
                 <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip content={<PieTooltip />} />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const item = payload[0];
+                return (
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.value} 个</p>
+                  </div>
+                );
+              }}
+            />
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -120,46 +121,92 @@ function CategoryDonut({ data }: { data: Array<{ name: string; value: number }> 
   );
 }
 
-function StatusDonut({ data }: { data: Record<string, number> }) {
-  const entries = useMemo(() => Object.entries(data).filter(([_, v]) => v > 0), [data]);
-  const total = useMemo(() => entries.reduce((s, [_, v]) => s + v, 0), [entries]);
-  const chartData = entries.map(([name, value]) => ({ name, value }));
+/** Horizontal stacked bar showing inventory status distribution */
+function HorizontalStatusBar({ data }: { data: Record<string, number> }) {
+  const entries = useMemo(() => {
+    const order = ["缺货", "偏低", "正常", "充足"];
+    return order
+      .map((name) => ({ name, value: data[name] || 0 }))
+      .filter((e) => e.value > 0);
+  }, [data]);
+  const total = useMemo(() => entries.reduce((s, e) => s + e.value, 0), [entries]);
+
+  if (total === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {/* Stacked bar */}
+      <div className="flex h-8 rounded-lg overflow-hidden shadow-inner">
+        {entries.map((e) => (
+          <div
+            key={e.name}
+            className="flex items-center justify-center transition-all duration-500"
+            style={{
+              width: `${(e.value / total) * 100}%`,
+              backgroundColor: STATUS_COLORS[e.name] || muted,
+              minWidth: e.value > 0 ? "2rem" : 0,
+            }}
+          >
+            <span className="text-[10px] font-bold text-white drop-shadow-sm">{e.value}</span>
+          </div>
+        ))}
+      </div>
+      {/* Legend */}
+      <div className="flex items-center justify-between">
+        {entries.map((e) => (
+          <div key={e.name} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[e.name] || muted }} />
+            <span className="text-[11px] text-slate-500">{e.name}</span>
+            <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{e.value}</span>
+            <span className="text-[10px] text-slate-400">({((e.value / total) * 100).toFixed(0)}%)</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Radial gauge showing today revenue vs target */
+export function RadialGauge({ todayAmount, targetAmount }: { todayAmount: number; targetAmount: number }) {
+  const pct = targetAmount > 0 ? Math.min(Math.round((todayAmount / targetAmount) * 100), 100) : 0;
+  const gaugeData = [{ name: "达成率", value: pct, fill: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" }];
 
   return (
     <div className="flex items-center gap-4">
-      <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
-        <ResponsiveContainer width={160} height={160}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              innerRadius={50}
-              outerRadius={75}
-              paddingAngle={3}
+      <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
+        <ResponsiveContainer width={120} height={120}>
+          <RadialBarChart
+            cx="50%"
+            cy="50%"
+            innerRadius="70%"
+            outerRadius="100%"
+            barSize={10}
+            data={gaugeData}
+            startAngle={90}
+            endAngle={-270}
+          >
+            <RadialBar
+              background={{ fill: "#e2e8f0" }}
               dataKey="value"
-              stroke="none"
-            >
-              {chartData.map((entry) => (
-                <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || muted} />
-              ))}
-            </Pie>
-            <Tooltip content={<PieTooltip />} />
-          </PieChart>
+              cornerRadius={5}
+            />
+          </RadialBarChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold text-slate-900 dark:text-white">{total}</span>
-          <span className="text-[10px] text-slate-400">SKU</span>
+          <span className="text-xl font-bold text-slate-900 dark:text-white">{pct}%</span>
+          <span className="text-[9px] text-slate-400">达成率</span>
         </div>
       </div>
-      <div className="flex-1 space-y-1.5 min-w-0">
-        {entries.map(([name, value]) => (
-          <div key={name} className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[name] || muted }} />
-            <span className="text-xs text-slate-600 dark:text-slate-400 flex-1">{name}</span>
-            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 tabular-nums">{value}</span>
-          </div>
-        ))}
+      <div className="flex-1 space-y-2 min-w-0">
+        <div>
+          <p className="text-[10px] text-slate-400 uppercase tracking-wider">今日营收</p>
+          <p className="text-base font-bold text-emerald-600">¥{formatPrice(todayAmount)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400 uppercase tracking-wider">目标</p>
+          <p className="text-sm font-semibold text-slate-500">¥{formatPrice(targetAmount)}</p>
+        </div>
+        <p className="text-[10px] text-slate-400">目标为昨日营收的 120%</p>
       </div>
     </div>
   );
@@ -200,36 +247,37 @@ export function BarChartCard({ data, title }: { data: Array<{ name: string; valu
   );
 }
 
-export function RadarChartCard({ data, title }: { data: Array<{ subject: string; value: number; fullMark: number }>; title: string }) {
-  if (!data || data.length === 0) return null;
-  return (
-    <ChartCard title={title} icon={Target}>
-      <div style={{ width: "100%", height: 220 }}>
-        <ResponsiveContainer width="100%" height={220}>
-          <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
-            <PolarGrid stroke="#e2e8f0" />
-            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: muted }} />
-            <PolarRadiusAxis tick={{ fontSize: 9, fill: muted }} />
-            <Radar name="评分" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-    </ChartCard>
-  );
-}
-
-export function Charts({ trendData, pieData, inventoryStatus, barData, radarData }: ChartsProps) {
+export function Charts({ trendData, pieData, inventoryStatus, todayAmount, targetAmount }: ChartsProps & { todayAmount?: number; targetAmount?: number }) {
   const totalSales = useMemo(
     () => trendData.reduce((s, d) => s + d.销售额, 0),
     [trendData],
   );
+  const totalPurchases = useMemo(
+    () => trendData.reduce((s, d) => s + d.采购额, 0),
+    [trendData],
+  );
+
+  // Aggregate trend data into weekly summaries
+  const weeklyData = useMemo(() => {
+    if (trendData.length === 0) return [];
+    const weeks: Array<{ name: string; 销售额: number; 采购额: number }> = [];
+    for (let i = 0; i < trendData.length; i += 7) {
+      const chunk = trendData.slice(i, i + 7);
+      const weekNum = Math.floor(i / 7) + 1;
+      weeks.push({
+        name: `第${weekNum}周`,
+        销售额: chunk.reduce((s, d) => s + d.销售额, 0),
+        采购额: chunk.reduce((s, d) => s + d.采购额, 0),
+      });
+    }
+    return weeks;
+  }, [trendData]);
 
   const hasTrend = trendData.some((d) => d.销售额 > 0 || d.采购额 > 0);
   const hasPie = pieData.length > 0;
   const hasStatus = Object.values(inventoryStatus).some((v) => v > 0);
-  const hasBar = barData && barData.length > 0;
-  const hasRadar = radarData && radarData.length > 0;
-  const hasAnyData = hasTrend || hasPie || hasStatus || hasBar || hasRadar;
+  const hasGauge = todayAmount != null && targetAmount != null;
+  const hasAnyData = hasTrend || hasPie || hasStatus;
 
   if (!hasAnyData) {
     return (
@@ -243,16 +291,43 @@ export function Charts({ trendData, pieData, inventoryStatus, barData, radarData
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      {/* Sales trend - Area chart */}
+      {/* Combined Sales & Purchase Trend - spans full width */}
       {hasTrend && (
-        <ChartCard title="销售趋势" icon={TrendingUp} value={`¥${formatPrice(totalSales)}`} subtitle="近7天累计">
-          <div style={{ width: "100%", height: 220 }}>
-            <ResponsiveContainer width="100%" height={220}>
+        <ChartCard
+          title="销售与采购趋势"
+          icon={TrendingUp}
+          className="lg:col-span-2"
+        >
+          {/* Summary stats */}
+          <div className="flex items-center gap-6 mb-4">
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">总销售额</p>
+              <p className="text-lg font-bold text-blue-600 dark:text-blue-400">¥{formatPrice(totalSales)}</p>
+            </div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">总采购额</p>
+              <p className="text-lg font-bold text-violet-600 dark:text-violet-400">¥{formatPrice(totalPurchases)}</p>
+            </div>
+            <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">毛利润</p>
+              <p className={`text-lg font-bold ${totalSales - totalPurchases >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                ¥{formatPrice(totalSales - totalPurchases)}
+              </p>
+            </div>
+          </div>
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={trendData}>
                 <defs>
                   <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="purchaseGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -260,34 +335,17 @@ export function Charts({ trendData, pieData, inventoryStatus, barData, radarData
                 <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
                 <Tooltip content={<MiniTooltip />} />
                 <Area type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={2} fill="url(#salesGrad)" dot={false} activeDot={{ r: 4, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="采购额" stroke="#8b5cf6" strokeWidth={2} fill="url(#purchaseGrad)" dot={false} activeDot={{ r: 4, fill: "#8b5cf6", stroke: "#fff", strokeWidth: 2 }} />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      )}
-
-      {/* Purchase vs Sales - thin lines */}
-      {hasTrend && (
-        <ChartCard title="采购 vs 销售" icon={ShoppingCart}>
-          <div style={{ width: "100%", height: 220 }}>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
-                <Tooltip content={<MiniTooltip />} />
-                <Line type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
-                <Line type="monotone" dataKey="采购额" stroke="#8b5cf6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#8b5cf6", stroke: "#fff", strokeWidth: 2 }} />
-              </LineChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center gap-4 mt-2 px-1">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-[2px] rounded-full bg-primary" />
+              <div className="w-3 h-[2px] rounded-full bg-blue-500" />
               <span className="text-[11px] text-slate-400">销售额</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-[2px] rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
+              <div className="w-3 h-[2px] rounded-full bg-violet-500" />
               <span className="text-[11px] text-slate-400">采购额</span>
             </div>
           </div>
@@ -301,18 +359,75 @@ export function Charts({ trendData, pieData, inventoryStatus, barData, radarData
         </ChartCard>
       )}
 
-      {/* Inventory status - donut chart */}
-      {hasStatus && (
-        <ChartCard title="库存状态" icon={AlertTriangle}>
-          <StatusDonut data={inventoryStatus} />
+      {/* Revenue gauge + Inventory horizontal bar */}
+      {(hasGauge || hasStatus) && (
+        <>
+          {hasGauge && (
+            <ChartCard title="营收达成" icon={Gauge}>
+              <RadialGauge todayAmount={todayAmount!} targetAmount={targetAmount!} />
+            </ChartCard>
+          )}
+          {hasStatus && !hasGauge && (
+            <ChartCard title="库存状态" icon={AlertTriangle}>
+              <HorizontalStatusBar data={inventoryStatus} />
+            </ChartCard>
+          )}
+        </>
+      )}
+
+      {/* Inventory status horizontal bar (when gauge exists too) */}
+      {hasStatus && hasGauge && (
+        <ChartCard title="库存状态" icon={AlertTriangle} className="lg:col-span-2">
+          <HorizontalStatusBar data={inventoryStatus} />
         </ChartCard>
       )}
 
-      {/* Bar chart (optional) */}
-      {barData && barData.length > 0 && <BarChartCard data={barData} title="排行" />}
-
-      {/* Radar chart (optional) */}
-      {radarData && radarData.length > 0 && <RadarChartCard data={radarData} title="综合评分" />}
+      {/* Weekly summary bar chart */}
+      {hasTrend && weeklyData.length > 1 && (
+        <ChartCard title="周度汇总" icon={BarChart3} className="lg:col-span-2">
+          <div style={{ width: "100%", height: 200 }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={weeklyData} barSize={20}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip
+                  cursor={{ fill: "rgba(148,163,184,0.08)" }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    return (
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
+                        <p className="text-[11px] text-slate-400 mb-1">{label}</p>
+                        {payload.map((p, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                            <span className="text-[11px] text-slate-500">{String(p.dataKey ?? "")}</span>
+                            <span className="text-sm font-semibold" style={{ color: p.color }}>
+                              ¥{formatPrice(Number(p.value) || 0)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                />
+                <Bar dataKey="销售额" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="采购额" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center gap-4 mt-2 px-1">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm bg-blue-500" />
+              <span className="text-[11px] text-slate-400">销售额</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm bg-violet-500" />
+              <span className="text-[11px] text-slate-400">采购额</span>
+            </div>
+          </div>
+        </ChartCard>
+      )}
     </div>
   );
 }

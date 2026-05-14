@@ -157,6 +157,26 @@ async function main() {
 
   console.log(`  ✅ 供应商: ${suppliers.length} 个`);
 
+  // ==================== 供应商-商品绑定 ====================
+  // 根据采购单数据建立绑定关系
+  // 供应商: 0统一食品 1可口可乐 2日用品批发 3零食天地 4新鲜果蔬 5调味品总经销
+  const bindingData: { supplierId: number; productId: number }[] = [];
+  const bindingPairs: [number, number[]][] = [
+    [0, [0, 1, 2, 3]],           // 统一食品 → 康师傅、统一、旺仔、达利园
+    [1, [6, 7, 8, 9, 10, 11]],   // 可口可乐 → 可乐、农夫山泉、元气森林、王老吉、伊利、红牛
+    [2, [12, 13, 14, 15]],       // 日用品 → 蓝月亮、维达、垃圾袋、南孚
+    [3, [16, 17, 18, 19, 20, 21]], // 零食天地 → 乐事、好丽友、德芙、三只松鼠、奥利奥、百草味
+    [4, [22, 23, 24, 25, 26]],   // 新鲜果蔬 → 苹果、香蕉、大白菜、西红柿、土豆
+    [5, [27, 28, 29, 30, 31, 32, 33]], // 调味日化 → 海天、老干妈、恒顺、太太乐、舒肤佳、海飞丝、高露洁
+  ];
+  for (const [supIdx, prodIndices] of bindingPairs) {
+    for (const prodIdx of prodIndices) {
+      bindingData.push({ supplierId: suppliers[supIdx].id, productId: products[prodIdx].id });
+    }
+  }
+  await prisma.supplierProduct.createMany({ data: bindingData, skipDuplicates: true });
+  console.log(`  ✅ 供应商-商品绑定: ${bindingData.length} 条`);
+
   // ==================== 库存 ====================
   // 36个商品，不同库存状态
   const inventoryMap: Record<number, number> = {};

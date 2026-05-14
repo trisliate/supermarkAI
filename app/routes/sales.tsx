@@ -62,7 +62,7 @@ export default function SalesPage({ loaderData }: Route.ComponentProps) {
       description="查看所有销售订单"
     >
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
         <div className="flex items-center gap-3">
           <Link to="/sales/new" className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
             <CreditCard className="size-4" /> 收银台

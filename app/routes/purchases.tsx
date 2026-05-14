@@ -120,7 +120,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
       description="管理采购订单"
     >
       {isLoading ? <PageSkeleton columns={3} rows={6} /> : (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
         {/* Search + Action */}
         <div className="flex items-center gap-3">
           <Link to="/purchases/new" className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
