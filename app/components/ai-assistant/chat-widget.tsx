@@ -5,7 +5,8 @@ import remarkGfm from "remark-gfm";
 import {
   X, Send, User, Loader2, Minus, Maximize2, Trash2, ExternalLink,
   Sparkles, CheckCircle, XCircle, ChevronDown, MessageSquare, Plus,
-  Clock, Settings2, Bot, Menu,
+  Clock, Settings2, Bot, Menu, Zap, History, Cpu, ArrowRight,
+  Search, BarChart3, HelpCircle, StopCircle,
 } from "lucide-react";
 
 interface ConfirmField {
@@ -43,15 +44,16 @@ interface ModelConfig {
   provider: string;
   model: string;
   isActive: boolean;
+  lastTestOk: boolean | null;
 }
 
 const quickQuestions = [
-  "哪些商品缺货了？",
-  "今天卖了多少？",
-  "什么卖得好？",
-  "热销排行",
-  "本月采购多少？",
-  "帮助",
+  { text: "哪些商品缺货了？", icon: Search },
+  { text: "今天卖了多少？", icon: BarChart3 },
+  { text: "什么卖得好？", icon: BarChart3 },
+  { text: "热销排行", icon: BarChart3 },
+  { text: "本月采购多少？", icon: BarChart3 },
+  { text: "帮助", icon: HelpCircle },
 ];
 
 const DEFAULT_W = 460;
@@ -95,7 +97,7 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
   const [size, setSize] = useState(loadSize);
 
   // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarView, setSidebarView] = useState<"history" | "models">("history");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
@@ -106,6 +108,7 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number; moved: boolean } | null>(null);
   const resizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number; edge: "corner" | "right" | "bottom" } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -217,6 +220,9 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
     setInput("");
     setIsLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const history = messages
         .filter((m) => m.role === "user" || m.role === "assistant")
@@ -226,6 +232,7 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: text, messages: history, sessionId: currentSessionId }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -267,12 +274,20 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
           navigate(data.navigateTo);
         }, 1500);
       }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now() + 1, role: "assistant", content: "请求失败，请稍后再试。", type: "text", retryQuery: text },
-      ]);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now() + 1, role: "assistant", content: "已停止回答。", type: "text" },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now() + 1, role: "assistant", content: "请求失败，请稍后再试。", type: "text", retryQuery: text },
+        ]);
+      }
     } finally {
+      abortRef.current = null;
       setIsLoading(false);
     }
   };
@@ -287,11 +302,15 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
     );
     setIsLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirmedTool: msg.toolName, confirmedArgs: args, sessionId: currentSessionId }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -312,11 +331,18 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
           navigate(data.navigateTo);
         }, 1500);
       }
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) => m.id === msg.id ? { ...m, content: "执行失败，请稍后再试。" } : m)
-      );
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setMessages((prev) =>
+          prev.map((m) => m.id === msg.id ? { ...m, content: "已停止执行。" } : m)
+        );
+      } else {
+        setMessages((prev) =>
+          prev.map((m) => m.id === msg.id ? { ...m, content: "执行失败，请稍后再试。" } : m)
+        );
+      }
     } finally {
+      abortRef.current = null;
       setIsLoading(false);
     }
   };
@@ -325,6 +351,10 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
     setMessages((prev) =>
       prev.map((m) => m.id === msgId ? { ...m, needsConfirmation: false, content: "操作已取消。" } : m)
     );
+  };
+
+  const stopGeneration = () => {
+    abortRef.current?.abort();
   };
 
   const updateConfirmField = (msgId: number, key: string, value: string) => {
@@ -495,25 +525,25 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
       {/* Chat window */}
       {isOpen && !isMinimized && (
         <div
-          className="fixed bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex z-50 overflow-hidden"
+          className="fixed bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex z-50 overflow-hidden"
           style={{ left: pos.x, top: pos.y, width: sidebarOpen ? size.w + 260 : size.w, height: size.h }}
         >
           {/* Sidebar */}
           {sidebarOpen && (
-            <div className="w-[260px] border-r border-slate-200 dark:border-slate-700 flex flex-col shrink-0 bg-slate-50 dark:bg-slate-900/50">
-              <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-1">
+            <div className="w-[260px] border-r border-slate-200 dark:border-slate-700 flex flex-col shrink-0 bg-slate-50/80 dark:bg-slate-900/50">
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-1">
                 <button
                   onClick={() => setSidebarView("history")}
                   className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${sidebarView === "history" ? "bg-primary text-primary-foreground" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                 >
-                  <MessageSquare className="w-3 h-3 inline mr-1" />
+                  <History className="w-3 h-3 inline mr-1" />
                   对话记录
                 </button>
                 <button
                   onClick={() => setSidebarView("models")}
                   className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${sidebarView === "models" ? "bg-primary text-primary-foreground" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                 >
-                  <Settings2 className="w-3 h-3 inline mr-1" />
+                  <Cpu className="w-3 h-3 inline mr-1" />
                   模型
                 </button>
               </div>
@@ -553,23 +583,33 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
 
                 {sidebarView === "models" && (
                   <>
-                    {models.map((m) => (
+                    {models.filter((m) => m.lastTestOk === true || m.isActive).map((m) => (
                       <button
                         key={m.id}
-                        onClick={() => switchModel(m.id)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-colors ${m.isActive ? "bg-primary/10 border border-primary/30" : "hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent"}`}
+                        onClick={() => m.lastTestOk ? switchModel(m.id) : undefined}
+                        disabled={!m.lastTestOk}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-colors ${
+                          m.isActive
+                            ? "bg-primary/10 border border-primary/30"
+                            : m.lastTestOk
+                              ? "hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent cursor-pointer"
+                              : "opacity-50 border border-transparent cursor-not-allowed"
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-slate-700 dark:text-slate-200">
                             {providerLabels[m.provider] || m.provider}
                           </span>
-                          {m.isActive && <span className="text-[10px] text-primary font-medium">当前</span>}
+                          <div className="flex items-center gap-1.5">
+                            {m.lastTestOk === false && <span className="text-[10px] text-red-400">未通过测试</span>}
+                            {m.isActive && <span className="text-[10px] text-primary font-medium">当前</span>}
+                          </div>
                         </div>
                         <div className="text-slate-400 mt-0.5">{m.model}</div>
                       </button>
                     ))}
-                    {models.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-4">暂无可用模型</p>
+                    {models.filter((m) => m.lastTestOk === true || m.isActive).length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-4">暂无可用模型，请先在设置中测试连接</p>
                     )}
                   </>
                 )}
@@ -581,7 +621,8 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
           <div className="flex flex-col flex-1 min-w-0">
             {/* Header */}
             <div
-              className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between shrink-0 cursor-move select-none"
+              className="bg-slate-50/80 dark:bg-slate-800/50 px-4 py-3 flex items-center justify-between shrink-0 cursor-move select-none"
+              style={{ borderBottom: "1px solid transparent", borderImage: "linear-gradient(to right, transparent, var(--primary), transparent) 1" }}
               onMouseDown={handleMouseDown}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -632,15 +673,15 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                   {msg.role === "assistant" && (
-                    <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 mt-0.5">
                       <Bot className="w-4 h-4 text-primary" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm ${
+                    className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                       msg.role === "user"
                         ? "bg-primary text-primary-foreground rounded-tr-sm"
-                        : "bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 rounded-tl-sm border-l-2 border-primary/40"
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-tl-sm"
                     }`}
                   >
                     {msg.title && msg.role === "assistant" && (
@@ -670,7 +711,7 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
                         onClick={() => { navigate(msg.navigateTo!); onClose(); }}
                         className="mt-2.5 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-colors"
                       >
-                        <ExternalLink className="w-3 h-3" />
+                        <ArrowRight className="w-3 h-3" />
                         前往页面
                       </button>
                     )}
@@ -762,14 +803,13 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
               ))}
               {isLoading && (
                 <div className="flex gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
                     <Bot className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl rounded-tl-sm border-l-2 border-primary/40 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                      <span className="text-xs text-slate-400">思考中...</span>
-                    </div>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-sm shadow-sm px-4 py-3 flex items-center gap-1.5">
+                    <div className="bounce-dot w-2 h-2 rounded-full bg-primary" />
+                    <div className="bounce-dot w-2 h-2 rounded-full bg-primary" />
+                    <div className="bounce-dot w-2 h-2 rounded-full bg-primary" />
                   </div>
                 </div>
               )}
@@ -778,16 +818,20 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
 
             {/* Quick questions */}
             {messages.length <= 1 && (
-              <div className="px-4 pb-2 flex flex-wrap gap-1.5">
-                {quickQuestions.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => sendMessage(q)}
-                    className="px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-                  >
-                    {q}
-                  </button>
-                ))}
+              <div className="px-4 pb-2 flex flex-wrap gap-2">
+                {quickQuestions.map((q) => {
+                  const QIcon = q.icon;
+                  return (
+                    <button
+                      key={q.text}
+                      onClick={() => sendMessage(q.text)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                    >
+                      <QIcon className="w-3 h-3" />
+                      {q.text}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -800,14 +844,18 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="输入你的问题..."
-                  className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary/30 border border-slate-200 dark:border-slate-700"
+                  className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
                 />
                 <button
-                  onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || isLoading}
-                  className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => isLoading ? stopGeneration() : sendMessage(input)}
+                  disabled={!isLoading && !input.trim()}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                    isLoading
+                      ? "bg-red-500 text-white hover:bg-red-600"
+                      : "bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  }`}
                 >
-                  <Send className="w-4 h-4" />
+                  {isLoading ? <StopCircle className="w-4 h-4" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
             </div>

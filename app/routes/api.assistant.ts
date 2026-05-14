@@ -125,7 +125,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Get available models and current active model
   if (url.searchParams.get("action") === "models") {
     const configs = await db.aIConfig.findMany({
-      select: { id: true, provider: true, model: true, isActive: true },
+      select: { id: true, provider: true, model: true, isActive: true, lastTestOk: true },
       orderBy: { createdAt: "desc" },
     });
     const active = configs.find((c) => c.isActive);

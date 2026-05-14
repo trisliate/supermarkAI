@@ -69,14 +69,17 @@ model Category {
 }
 
 model Product {
-  id          Int           @id @default(autoincrement())
-  name        String
-  categoryId  Int
-  price       Decimal       @db.Decimal(10, 2)
-  unit        String        // 个、箱、瓶、袋等
-  description String?
-  status      ProductStatus @default(active)
-  createdAt   DateTime      @default(now())
+  id              Int           @id @default(autoincrement())
+  name            String
+  categoryId      Int
+  price           Decimal       @db.Decimal(10, 2)
+  unit            String        // 个、箱、瓶、袋等
+  description     String?
+  status          ProductStatus @default(active)
+  image           Bytes?        // 商品图片
+  shelfLifeDays   Int?          // 保质期天数
+  productionDate  DateTime?     // 默认生产日期
+  createdAt       DateTime      @default(now())
 
   category         Category           @relation(fields: [categoryId], references: [id])
   inventory        Inventory?

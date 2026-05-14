@@ -39,7 +39,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   await db.product.update({
     where: { id: Number(params.id) },
-    data: { name, categoryId, price, unit, description, status },
+    data: {
+      name, categoryId, price, unit, description, status,
+      shelfLifeDays: formData.get("shelfLifeDays") ? Number(formData.get("shelfLifeDays")) : null,
+      productionDate: formData.get("productionDate") ? new Date(formData.get("productionDate") as string) : null,
+    },
   });
 
   throw flashRedirect("/products", { type: "success", message: "商品已更新" });
@@ -89,6 +93,16 @@ export default function EditProductPage() {
               <div className="space-y-2">
                 <Label htmlFor="unit">单位</Label>
                 <Input id="unit" name="unit" defaultValue={product.unit} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" defaultValue={product.shelfLifeDays ?? ""} placeholder="如 365" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="productionDate" name="productionDate" type="date" defaultValue={product.productionDate ? new Date(product.productionDate).toISOString().split("T")[0] : ""} />
               </div>
             </div>
             <div className="space-y-2">

@@ -226,7 +226,11 @@ export async function action({ request }: Route.ActionArgs) {
 export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
   const { user, configs } = loaderData;
   const fetcher = useFetcher();
-  const [activeProvider, setActiveProvider] = useState<string | null>(null);
+  // Auto-select first provider with existing configs, or first provider
+  const [activeProvider, setActiveProvider] = useState<string | null>(() => {
+    const withConfig = providers.find((p) => configs.some((c) => c.provider === p.value));
+    return withConfig?.value || providers[0]?.value || null;
+  });
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -321,7 +325,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout user={user} description="配置 AI 模型供应商和 API Key">
-    <div className="animate-fade-in h-full flex flex-col">
+    <div className="animate-fade-in flex flex-col">
 
       {/* Top: provider cards */}
       <div className="flex gap-2 pb-4 overflow-x-auto shrink-0">
@@ -615,10 +619,9 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
-          <Server className="w-12 h-12 mb-3 opacity-30" />
+        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+          <Server className="w-10 h-10 mb-2 opacity-30" />
           <p className="text-sm">点击上方供应商卡片开始配置</p>
-          <p className="text-xs mt-1">支持 OpenAI Compatible 和 Anthropic 两种协议</p>
         </div>
       )}
 

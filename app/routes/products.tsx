@@ -21,6 +21,7 @@ import { SearchableSelect } from "~/components/ui/searchable-select";
 import { Plus, Pencil, Trash2, Package, Search, Loader2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
+import { ImageUpload } from "~/components/ui/image-upload";
 
 const PAGE_SIZE = 20;
 
@@ -41,7 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     db.supplier.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.supplierProduct.findMany({ select: { supplierId: true, productId: true } }),
   ]);
-  const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price) }));
+  const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price), hasImage: !!p.image, image: undefined }));
 
   // Build productId -> supplierId[] map
   const bindingMap: Record<number, number[]> = {};
@@ -60,7 +61,14 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (intent === "delete") {
     const id = Number(formData.get("id"));
-    await db.product.delete({ where: { id } });
+    await db.$transaction([
+      db.inventoryLog.deleteMany({ where: { productId: id } }),
+      db.inventory.deleteMany({ where: { productId: id } }),
+      db.saleOrderItem.deleteMany({ where: { productId: id } }),
+      db.purchaseOrderItem.deleteMany({ where: { productId: id } }),
+      db.supplierProduct.deleteMany({ where: { productId: id } }),
+      db.product.delete({ where: { id } }),
+    ]);
     return { ok: true, intent: "delete" };
   }
 
@@ -72,15 +80,23 @@ export async function action({ request }: Route.ActionArgs) {
     const unit = formData.get("unit") as string;
     const description = formData.get("description") as string;
     const status = formData.get("status") as "active" | "inactive";
+    const shelfLifeDays = formData.get("shelfLifeDays") ? Number(formData.get("shelfLifeDays")) : null;
+    const productionDate = formData.get("productionDate") ? new Date(formData.get("productionDate") as string) : null;
+    const imageDataUrl = formData.get("image") as string | null;
 
     if (!name || !categoryId || !price || !unit) {
       return { error: "必填字段不能为空", intent: "update" };
     }
 
-    await db.product.update({
-      where: { id },
-      data: { name, categoryId, price, unit, description, status },
-    });
+    const updateData: Record<string, unknown> = { name, categoryId, price, unit, description, status, shelfLifeDays, productionDate };
+    if (imageDataUrl && imageDataUrl.startsWith("data:image")) {
+      updateData.image = Buffer.from(imageDataUrl.split(",")[1], "base64");
+    }
+    if (formData.get("removeImage") === "true") {
+      updateData.image = null;
+    }
+
+    await db.product.update({ where: { id }, data: updateData });
     return { ok: true, intent: "update" };
   }
 
@@ -90,14 +106,20 @@ export async function action({ request }: Route.ActionArgs) {
     const price = Number(formData.get("price"));
     const unit = formData.get("unit") as string;
     const description = formData.get("description") as string;
+    const shelfLifeDays = formData.get("shelfLifeDays") ? Number(formData.get("shelfLifeDays")) : null;
+    const productionDate = formData.get("productionDate") ? new Date(formData.get("productionDate") as string) : null;
+    const imageDataUrl = formData.get("image") as string | null;
 
     if (!name || !categoryId || !price || !unit) {
       return { error: "必填字段不能为空", intent: "create" };
     }
 
-    const product = await db.product.create({
-      data: { name, categoryId, price, unit, description },
-    });
+    const createData: Record<string, unknown> = { name, categoryId, price, unit, description, shelfLifeDays, productionDate };
+    if (imageDataUrl && imageDataUrl.startsWith("data:image")) {
+      createData.image = Buffer.from(imageDataUrl.split(",")[1], "base64");
+    }
+
+    const product = await db.product.create({ data: createData });
     await db.inventory.create({ data: { productId: product.id, quantity: 0 } });
     return { ok: true, intent: "create" };
   }
@@ -127,6 +149,9 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
   const [showNew, setShowNew] = useState(false);
   const [newCategoryId, setNewCategoryId] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
+  const [newImage, setNewImage] = useState<string | null>(null);
+  const [editImage, setEditImage] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [bindingProduct, setBindingProduct] = useState<typeof products[number] | null>(null);
@@ -301,6 +326,17 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
           </DialogHeader>
           <fetcher.Form method="post" className="space-y-4">
             <input type="hidden" name="intent" value="create" />
+            <input type="hidden" name="image" value={newImage || ""} />
+            <div className="space-y-1.5">
+              <Label>商品图片 <span className="text-muted-foreground font-normal">(可选)</span></Label>
+              <ImageUpload
+                onUpload={(b64) => setNewImage(b64)}
+                onRemove={() => setNewImage(null)}
+                isSaving={isSaving}
+                size="md"
+                placeholder="上传商品图"
+              />
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="new-name">商品名称</Label>
               <Input id="new-name" name="name" required placeholder="请输入商品名称" />
@@ -324,6 +360,16 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
               <div className="space-y-1.5">
                 <Label htmlFor="new-unit">单位</Label>
                 <Input id="new-unit" name="unit" required placeholder="个/箱/瓶" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="new-shelfLifeDays" name="shelfLifeDays" type="number" min="1" placeholder="如 365" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="new-productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="new-productionDate" name="productionDate" type="date" />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -354,6 +400,19 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
             <fetcher.Form method="post" className="space-y-4">
               <input type="hidden" name="intent" value="update" />
               <input type="hidden" name="id" value={editProduct.id} />
+              <input type="hidden" name="image" value={editImage || ""} />
+              <input type="hidden" name="removeImage" value={removeImage ? "true" : ""} />
+              <div className="space-y-1.5">
+                <Label>商品图片</Label>
+                <ImageUpload
+                  existingImageUrl={!removeImage && editProduct.hasImage ? `/api/product-image?productId=${editProduct.id}` : null}
+                  onUpload={(b64) => { setEditImage(b64); setRemoveImage(false); }}
+                  onRemove={() => { setEditImage(null); setRemoveImage(true); }}
+                  isSaving={isSaving}
+                  size="md"
+                  placeholder="上传商品图"
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-name">商品名称</Label>
                 <Input id="edit-name" name="name" defaultValue={editProduct.name} required />
@@ -377,6 +436,16 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-unit">单位</Label>
                   <Input id="edit-unit" name="unit" defaultValue={editProduct.unit} required />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                  <Input id="edit-shelfLifeDays" name="shelfLifeDays" type="number" min="1" defaultValue={editProduct.shelfLifeDays ?? ""} placeholder="如 365" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                  <Input id="edit-productionDate" name="productionDate" type="date" defaultValue={editProduct.productionDate ? new Date(editProduct.productionDate).toISOString().split("T")[0] : ""} />
                 </div>
               </div>
               <div className="space-y-1.5">

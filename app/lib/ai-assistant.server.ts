@@ -30,6 +30,7 @@ interface ChatMessage {
   content: string | null;
   tool_calls?: LLMToolCall[];
   tool_call_id?: string;
+  reasoning_content?: string;
 }
 
 const providerBaseUrls: Record<string, string> = {
@@ -93,6 +94,13 @@ const toolMeta: Record<string, { requiredRoles?: Role[]; writeOperation?: boolea
       { key: "quantity", label: "数量", type: "number", required: true },
       { key: "type", label: "类型", type: "select", options: ["IN", "OUT"], required: true },
       { key: "reason", label: "原因", type: "text" },
+    ],
+  },
+  create_sale: {
+    requiredRoles: ["admin", "cashier"],
+    writeOperation: true,
+    fields: [
+      { key: "items", label: "商品列表（JSON格式）", type: "text", required: true },
     ],
   },
   get_hot_selling_products: {},
@@ -287,6 +295,31 @@ const tools = [
           reason: { type: "string", description: "原因" },
         },
         required: ["productName", "quantity", "type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_sale",
+      description: "创建销售订单（开单，需要确认）。items格式：[{productName, quantity}]",
+      parameters: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            description: "销售商品列表",
+            items: {
+              type: "object",
+              properties: {
+                productName: { type: "string", description: "商品名称" },
+                quantity: { type: "number", description: "数量" },
+              },
+              required: ["productName", "quantity"],
+            },
+          },
+        },
+        required: ["items"],
       },
     },
   },
@@ -625,6 +658,57 @@ async function executeTool(name: string, args: Record<string, unknown>, user?: A
       });
     }
 
+    case "create_sale": {
+      const rawItems = args.items as Array<{ productName: string; quantity: number }>;
+      if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
+        return JSON.stringify({ error: "请提供至少一个商品" });
+      }
+
+      const userId = user?.id || 1;
+      const saleItems: { productId: number; quantity: number; unitPrice: number; name: string; unit: string }[] = [];
+
+      for (const item of rawItems) {
+        if (!item.productName || !item.quantity || item.quantity <= 0) {
+          return JSON.stringify({ error: `商品"${item.productName}"信息不完整` });
+        }
+        const p = await db.product.findFirst({
+          where: { name: { contains: item.productName }, status: "active" },
+          include: { inventory: true },
+        });
+        if (!p) {
+          return JSON.stringify({ error: `未找到商品"${item.productName}"` });
+        }
+        if (!p.inventory || p.inventory.quantity < item.quantity) {
+          return JSON.stringify({ error: `${p.name} 库存不足：当前 ${p.inventory?.quantity ?? 0}${p.unit}，需要 ${item.quantity}${p.unit}` });
+        }
+        saleItems.push({ productId: p.id, quantity: item.quantity, unitPrice: Number(p.price), name: p.name, unit: p.unit });
+      }
+
+      const totalAmount = saleItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+
+      await db.$transaction(async (tx) => {
+        const order = await tx.saleOrder.create({
+          data: { userId, totalAmount, items: { create: saleItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })) } },
+        });
+        for (const item of saleItems) {
+          await tx.inventory.update({
+            where: { productId: item.productId },
+            data: { quantity: { decrement: item.quantity } },
+          });
+          await tx.inventoryLog.create({
+            data: { productId: item.productId, type: "OUT", quantity: item.quantity, reason: `销售订单 #${order.id}`, userId },
+          });
+        }
+      });
+
+      const summary = saleItems.map((i) => `${i.name} x${i.quantity}`).join("、");
+      return JSON.stringify({
+        success: true,
+        message: `销售完成：${summary}，合计 ¥${totalAmount.toFixed(2)}`,
+        totalAmount,
+      });
+    }
+
     case "get_hot_selling_products": {
       const days = (args.days as number) || 7;
       const startDate = new Date();
@@ -890,11 +974,12 @@ async function buildSystemPrompt(): Promise<string> {
 - create_supplier: 创建新供应商（name, contact, phone, address）
 - create_category: 创建新分类（name, description）
 - adjust_inventory: 调整库存（productName, quantity, type=IN/OUT, reason）
+- create_sale: 创建销售订单/开单（items: [{productName, quantity}]）
 
 ## 使用规则：
 1. 用户询问数据时，**必须调用对应工具**获取实时数据，绝对不要编造数字
 2. 用户要导航到某页面时，调用 navigate 工具
-3. 用户要创建/编辑商品、供应商、分类或调整库存时，调用对应写操作工具（系统会自动弹出确认框）
+3. 用户要创建/编辑商品、供应商、分类、调整库存或销售开单时，调用对应写操作工具（系统会自动弹出确认框）
 4. 复杂问题可以组合多个工具获取完整信息
 5. 如果工具返回空结果，如实告知用户
 
@@ -910,7 +995,7 @@ async function buildSystemPrompt(): Promise<string> {
 - 涉及操作时给出具体的导航指引`;
 }
 
-async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
+async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[]; reasoningContent?: string }> {
   const url = config.baseUrl || providerBaseUrls[config.provider] || "";
   const decryptedKey = decrypt(config.apiKey);
   const protocol = config.protocol || "openai";
@@ -994,6 +1079,7 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
       tool_choice: "auto",
       max_tokens: 1024,
       temperature: 0.7,
+      ...(config.provider === "doubao" ? { thinking: { type: "disabled" } } : {}),
     }),
   });
 
@@ -1009,6 +1095,7 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
   return {
     content: choice.message?.content || "",
     toolCalls: choice.message?.tool_calls,
+    reasoningContent: choice.message?.reasoning_content,
   };
 }
 
@@ -1060,6 +1147,7 @@ export async function executeConfirmedTool(toolName: string, toolArgs: Record<st
     create_supplier: "创建供应商",
     create_category: "创建分类",
     adjust_inventory: "调整库存",
+    create_sale: "创建销售",
   };
 
   // Navigation after successful write operations
@@ -1103,7 +1191,7 @@ async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, 
         const functionArgs = toolCall.function?.arguments ? JSON.parse(toolCall.function.arguments) : {};
         return {
           type: "confirm",
-          title: `确认${functionName === "create_product" ? "创建商品" : functionName === "edit_product" ? "编辑商品" : functionName === "toggle_product_status" ? "修改商品状态" : functionName === "create_supplier" ? "创建供应商" : functionName === "create_category" ? "创建分类" : "调整库存"}`,
+          title: `确认${functionName === "create_product" ? "创建商品" : functionName === "edit_product" ? "编辑商品" : functionName === "toggle_product_status" ? "修改商品状态" : functionName === "create_supplier" ? "创建供应商" : functionName === "create_category" ? "创建分类" : functionName === "create_sale" ? "销售开单" : "调整库存"}`,
           content: result.content || "AI 建议执行以下操作，请确认：",
           needsConfirmation: true,
           toolName: functionName,
@@ -1124,9 +1212,11 @@ async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, 
         role: "assistant" as const,
         content: null,
         tool_calls: [toolCall],
+        reasoning_content: result.reasoningContent,
       });
       toolResults.push({
         role: "tool" as const,
+        tool_call_id: toolCall.id,
         content: toolResult,
       });
     }

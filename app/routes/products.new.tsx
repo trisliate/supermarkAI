@@ -35,7 +35,11 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const product = await db.product.create({
-    data: { name, categoryId, price, unit, description },
+    data: {
+      name, categoryId, price, unit, description,
+      shelfLifeDays: formData.get("shelfLifeDays") ? Number(formData.get("shelfLifeDays")) : null,
+      productionDate: formData.get("productionDate") ? new Date(formData.get("productionDate") as string) : null,
+    },
   });
 
   await db.inventory.create({ data: { productId: product.id, quantity: 0 } });
@@ -93,6 +97,17 @@ export default function NewProductPage() {
               <div className="space-y-2">
                 <Label htmlFor="unit">单位</Label>
                 <Input id="unit" name="unit" required placeholder="个/箱/瓶" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" placeholder="如 365" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Input id="productionDate" name="productionDate" type="date" />
               </div>
             </div>
 

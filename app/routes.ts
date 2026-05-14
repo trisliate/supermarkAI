@@ -29,6 +29,7 @@ export default [
   route("api/assistant", "routes/api.assistant.ts"),
   route("api/notifications", "routes/api.notifications.ts"),
   route("api/avatar", "routes/api.avatar.ts"),
+  route("api/product-image", "routes/api.product-image.ts"),
   route(".well-known/*", "routes/well-known.ts"),
   route("*", "routes/$.tsx"),
 ] satisfies RouteConfig;
