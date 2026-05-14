@@ -80,7 +80,7 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
       <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex flex-row items-center overflow-hidden">
-        <div className="px-4 w-full flex items-center gap-3 group-data-[collapsible=icon]:pl-[6px] group-data-[collapsible=icon]:pr-0">
+        <div className="pl-[6px] w-full flex items-center gap-3 group-data-[collapsible=icon]:pr-0">
           <div className="sidebar-logo size-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
             <span className="text-sm font-black text-slate-700 dark:text-slate-200 leading-none select-none">S</span>
           </div>
