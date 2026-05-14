@@ -233,10 +233,10 @@ export default function LoginPage() {
             <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 mb-3 uppercase tracking-wider">演示账号</p>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { role: "店长", user: "admin", pass: "admin123", icon: ShieldCheck, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400", ai: "全功能 + AI 助手" },
-                { role: "采购", user: "purchaser", pass: "123456", icon: Package, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/20 dark:text-blue-400", ai: "智能补货建议" },
-                { role: "理货员", user: "keeper", pass: "123456", icon: Zap, color: "text-teal-600 bg-teal-50 dark:bg-teal-950/20 dark:text-teal-400", ai: "库存预警" },
-                { role: "收银员", user: "cashier", pass: "123456", icon: BarChart3, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/20 dark:text-purple-400", ai: "热销分析" },
+                { role: "店长", user: "admin", pass: "admin123", icon: ShieldCheck, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400" },
+                { role: "采购", user: "purchaser", pass: "123456", icon: Package, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/20 dark:text-blue-400" },
+                { role: "理货员", user: "keeper", pass: "123456", icon: Zap, color: "text-teal-600 bg-teal-50 dark:bg-teal-950/20 dark:text-teal-400" },
+                { role: "收银员", user: "cashier", pass: "123456", icon: BarChart3, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/20 dark:text-purple-400" },
               ].map((d) => (
                 <button
                   key={d.role}
@@ -257,11 +257,6 @@ export default function LoginPage() {
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{d.role}</p>
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{d.user}</p>
-                  </div>
-                  <div className="ml-auto shrink-0">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
-                      {d.ai}
-                    </span>
                   </div>
                 </button>
               ))}
