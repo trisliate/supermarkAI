@@ -79,12 +79,15 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       collapsible="icon"
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex items-center overflow-hidden">
-        <div className="px-4 w-full flex items-center justify-center gap-3 group-data-[collapsible=icon]:px-0">
-          <div className="sidebar-logo size-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
-            <span className="text-white text-[10px] font-black leading-none select-none">S</span>
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex flex-row items-center overflow-hidden">
+        <div className="px-4 w-full flex items-center gap-3 group-data-[collapsible=icon]:pl-[6px] group-data-[collapsible=icon]:pr-0">
+          <div className="sidebar-logo size-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
+            <span className="text-sm font-black text-slate-700 dark:text-slate-200 leading-none select-none">S</span>
           </div>
-          <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap">SuperMarket</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap leading-tight">SMAI</span>
+            <span className="sidebar-subtitle text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight">Smart Management</span>
+          </div>
         </div>
       </SidebarHeader>
 
