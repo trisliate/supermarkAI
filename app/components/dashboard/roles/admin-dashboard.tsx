@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Link } from "react-router";
 import {
   Package, Truck, ShoppingCart, AlertTriangle, DollarSign, Users,
-  TrendingUp, Clock, ArrowRight, UserCheck, Activity, BarChart3, ArrowUpRight, ArrowDownRight,
+  TrendingUp, Clock, ArrowRight, UserCheck, Activity, BarChart3, ArrowUpRight, ArrowDownRight, CalendarClock,
 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Badge } from "~/components/ui/badge";
@@ -27,10 +27,11 @@ interface AdminDashboardProps {
   topProducts: Array<{ name: string; quantity: number; amount: number }>;
   staffPerformance: Array<{ name: string; role: string; salesCount: number; salesAmount: number }>;
   pendingPurchases: Array<{ id: number; supplier: string; amount: number; createdAt: string }>;
+  expiryItems?: Array<{ productName: string; expiryDate: string; daysLeft: number }>;
 }
 
 export function AdminDashboard({
-  stats, trendData, pieData, inventoryStatus, topProducts, staffPerformance, pendingPurchases,
+  stats, trendData, pieData, inventoryStatus, topProducts, staffPerformance, pendingPurchases, expiryItems,
 }: AdminDashboardProps) {
   const salesTrend = stats.yesterdaySalesAmount > 0
     ? Math.round(((stats.todaySalesAmount - stats.yesterdaySalesAmount) / stats.yesterdaySalesAmount) * 100)
@@ -213,6 +214,34 @@ export function AdminDashboard({
           )}
         </div>
       </div>
+
+      {/* 临期商品预警 */}
+      {expiryItems && expiryItems.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-800/50 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-amber-50 dark:bg-amber-950/30 rounded-lg flex items-center justify-center">
+              <CalendarClock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">临期商品预警</h3>
+              <p className="text-xs text-slate-400">30天内到期的采购商品</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {expiryItems.map((item, i) => (
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${item.daysLeft <= 7 ? "border-red-200 dark:border-red-800/50 bg-red-50/50 dark:bg-red-950/20" : item.daysLeft <= 14 ? "border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20" : "border-slate-200 dark:border-slate-800"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white ${item.daysLeft <= 7 ? "bg-red-500" : item.daysLeft <= 14 ? "bg-amber-500" : "bg-slate-400"}`}>
+                  {item.daysLeft}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{item.productName}</p>
+                  <p className="text-[10px] text-slate-400">{item.daysLeft <= 0 ? "已过期" : `${item.daysLeft}天后到期`}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

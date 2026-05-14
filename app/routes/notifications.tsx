@@ -86,6 +86,7 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
   const fetcher = useFetcher();
   const [showNew, setShowNew] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailNotif, setDetailNotif] = useState<typeof notifications[number] | null>(null);
   const isSaving = fetcher.state !== "idle";
 
   useEffect(() => {
@@ -110,13 +111,11 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
       description="发送和管理系统通知"
     >
       <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Button onClick={() => setShowNew(true)}>
+        <div className="flex justify-end">
+          <Button onClick={() => setShowNew(true)} size="sm">
             <Plus className="size-4" /> 发送通知
           </Button>
         </div>
-
         <Card>
           <CardContent className="p-0">
             {notifications.length === 0 ? (
@@ -127,7 +126,7 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {notifications.map((n) => (
-                  <div key={n.id} className="flex items-start gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <div key={n.id} onClick={() => setDetailNotif(n)} className="flex items-start gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
                     <Send className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -149,7 +148,7 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
                     <Button
                       variant="ghost" size="sm"
                       className="shrink-0 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteId(n.id)}
+                      onClick={(e) => { e.stopPropagation(); setDeleteId(n.id); }}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
@@ -231,6 +230,38 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
           fetcher.submit(fd, { method: "post" });
         }}
       />
+
+      {/* Detail dialog */}
+      <Dialog open={detailNotif !== null} onOpenChange={(o) => { if (!o) setDetailNotif(null); }}>
+        <DialogContent className="max-w-md">
+          {detailNotif && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Send className="size-4" />
+                  {detailNotif.title}
+                </DialogTitle>
+                <DialogDescription className="flex items-center gap-2">
+                  <Badge variant="secondary" className={`text-[10px] ${typeColors[detailNotif.type] || ""}`}>
+                    {typeLabels[detailNotif.type] || detailNotif.type}
+                  </Badge>
+                  {detailNotif.targetRole && (
+                    <span className="text-[10px] text-slate-400">
+                      → {roleOptions.find((r) => r.value === detailNotif.targetRole)?.label || detailNotif.targetRole}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-slate-400 ml-auto">
+                    {new Date(detailNotif.createdAt).toLocaleString("zh-CN")}
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {detailNotif.content}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

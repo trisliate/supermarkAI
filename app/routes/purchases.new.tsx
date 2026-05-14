@@ -65,6 +65,17 @@ export async function action({ request }: Route.ActionArgs) {
     return { error: "请选择供应商并添加至少一项商品" };
   }
 
+  // Validate that all products are linked to the selected supplier
+  const supplierProducts = await db.supplierProduct.findMany({
+    where: { supplierId, productId: { in: items.map((i) => i.productId) } },
+    select: { productId: true },
+  });
+  const linkedIds = new Set(supplierProducts.map((sp) => sp.productId));
+  const unlinked = items.filter((i) => !linkedIds.has(i.productId));
+  if (unlinked.length > 0) {
+    return { error: "部分商品未关联到所选供应商，请检查采购清单" };
+  }
+
   for (const item of items) {
     if (!item.unitPrice || !isFinite(item.unitPrice)) {
       const product = await db.product.findUnique({ where: { id: item.productId } });
@@ -129,7 +140,7 @@ export default function NewPurchasePage() {
   const availableProducts = useMemo(() => {
     if (!supplierId) return products;
     const supplierProds = supplierProductMap[Number(supplierId)];
-    if (!supplierProds || supplierProds.length === 0) return products;
+    if (!supplierProds || supplierProds.length === 0) return [];
     return supplierProds;
   }, [supplierId, products, supplierProductMap]);
 
@@ -189,13 +200,11 @@ export default function NewPurchasePage() {
       description="选择供应商并添加采购商品"
     >
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div></div>
-        <Link to="/purchases" className={cn(buttonVariants({ variant: "outline" }), "h-9 text-xs")}>
+      <div className="flex justify-end mb-4">
+        <Link to="/purchases" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           返回列表
         </Link>
       </div>
-
       {actionData?.error && (
         <Alert variant="destructive" className="py-2 mb-4">
           <AlertCircle className="size-4" />

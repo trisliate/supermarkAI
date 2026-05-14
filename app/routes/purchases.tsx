@@ -121,15 +121,11 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
     >
       {isLoading ? <PageSkeleton columns={3} rows={6} /> : (
       <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Link to="/purchases/new" className={cn(buttonVariants({}))}>
+        {/* Search + Action */}
+        <div className="flex items-center gap-3">
+          <Link to="/purchases/new" className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
             <Plus className="size-4" /> 新建采购单
           </Link>
-        </div>
-
-        {/* Search + Filter tabs */}
-        <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <Input placeholder="搜索供应商、创建人或单号..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />

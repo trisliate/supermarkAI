@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import {
   Package, AlertTriangle, XCircle, DollarSign,
-  ArrowRight, Clock, TrendingDown, Settings,
+  ArrowRight, Clock, TrendingDown, Settings, CalendarClock,
 } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
@@ -19,6 +19,7 @@ interface InventoryDashboardProps {
   alertItems: Array<{ id: number; productName: string; categoryName: string; quantity: number; unit: string; price: number }>;
   recentLogs: Array<{ id: number; productName: string; type: "IN" | "OUT"; quantity: number; reason: string; userName: string; createdAt: string }>;
   slowMoving: SlowMovingItem[];
+  expiryItems?: Array<{ productName: string; expiryDate: string; daysLeft: number }>;
 }
 
 const typeLabels: Record<string, string> = { IN: "入库", OUT: "出库" };
@@ -28,7 +29,7 @@ const typeColors: Record<string, string> = {
 };
 
 export function InventoryDashboard({
-  stats, inventoryStatus, alertItems, recentLogs, slowMoving,
+  stats, inventoryStatus, alertItems, recentLogs, slowMoving, expiryItems,
 }: InventoryDashboardProps) {
   const statusEntries = Object.entries(inventoryStatus).filter(([_, v]) => v > 0);
   const total = statusEntries.reduce((sum, [_, v]) => sum + v, 0);
@@ -176,6 +177,29 @@ export function InventoryDashboard({
                       <p className="text-[10px] text-slate-400">{item.categoryName} · 库存 {item.stock}</p>
                     </div>
                     <span className="text-[13px] font-semibold text-orange-600 shrink-0 tabular-nums">¥{formatPrice(item.stockValue)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Expiry warnings */}
+          {expiryItems && expiryItems.length > 0 && (
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarClock className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">临期预警</span>
+              </div>
+              <div className="space-y-2">
+                {expiryItems.slice(0, 6).map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white ${item.daysLeft <= 7 ? "bg-red-500" : item.daysLeft <= 14 ? "bg-amber-500" : "bg-slate-400"}`}>
+                      {item.daysLeft}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-slate-700 dark:text-slate-200 truncate">{item.productName}</p>
+                      <p className="text-[10px] text-slate-400">{item.daysLeft <= 0 ? "已过期" : `${item.daysLeft}天后到期`}</p>
+                    </div>
                   </div>
                 ))}
               </div>

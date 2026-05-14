@@ -149,16 +149,12 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
     >
       {isLoading ? <PageSkeleton columns={8} rows={6} /> : (
       <div className="space-y-6 animate-fade-in">
-        {user.role === "admin" && (
-          <div className="flex items-center justify-between mb-6">
-            <div></div>
-            <Button onClick={() => setShowNew(true)}>
+        <div className="flex items-center gap-3 flex-wrap">
+          {user.role === "admin" && (
+            <Button onClick={() => setShowNew(true)} size="sm" className="shrink-0">
               <Plus className="size-4" /> 新增商品
             </Button>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 flex-wrap">
+          )}
           <Tabs value={category} onValueChange={setCategory}>
             <TabsList className="h-9">
               <TabsTrigger value="all" className="text-xs">全部 ({products.length})</TabsTrigger>

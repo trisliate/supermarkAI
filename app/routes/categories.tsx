@@ -94,15 +94,12 @@ export default function CategoriesPage() {
     >
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
       <div className="animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Button onClick={() => setShowAdd(true)} size="sm">
+        {/* Search + Action */}
+        <div className="flex items-center gap-3 mb-4">
+          <Button onClick={() => setShowAdd(true)} size="sm" className="shrink-0">
             <Plus className="size-4" /> 添加分类
           </Button>
-        </div>
-
-        {/* Search */}
-        <div className="relative max-w-sm mb-4">
+          <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
           <Input
             placeholder="搜索分类..."
@@ -110,6 +107,7 @@ export default function CategoriesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"
           />
+        </div>
         </div>
 
         {/* Add form */}

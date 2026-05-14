@@ -13,9 +13,10 @@ interface AppLayoutProps {
   description?: string;
   backTo?: string;
   backLabel?: string;
+  actions?: React.ReactNode;
 }
 
-export function AppLayout({ user, children, description, backTo, backLabel }: AppLayoutProps) {
+export function AppLayout({ user, children, description, backTo, backLabel, actions }: AppLayoutProps) {
   useFlashToast();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -37,8 +38,8 @@ export function AppLayout({ user, children, description, backTo, backLabel }: Ap
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <AppSidebar user={user} />
       <SidebarInset className="bg-slate-50 dark:bg-slate-950">
-        <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} description={description} backTo={backTo} backLabel={backLabel} />
-        <div className="flex-1 p-6 min-h-0">{children}</div>
+        <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} description={description} backTo={backTo} backLabel={backLabel} actions={actions} />
+        <div className="flex-1 p-6 pb-12 min-h-0">{children}</div>
       </SidebarInset>
 
       {catEnabled && <FloatingCat />}

@@ -43,13 +43,6 @@ export default function InventoryLogPage({ loaderData }: Route.ComponentProps) {
       description="最近 100 条出入库操作记录"
     >
       <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Link to="/inventory" className={cn(buttonVariants({ variant: "outline" }))}>
-            <ArrowLeft className="size-4" /> 返回库存
-          </Link>
-        </div>
-
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
@@ -67,6 +60,11 @@ export default function InventoryLogPage({ loaderData }: Route.ComponentProps) {
               <TabsTrigger value="OUT" className="text-xs">出库</TabsTrigger>
             </TabsList>
           </Tabs>
+          <div className="ml-auto">
+            <Link to="/inventory" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <ArrowLeft className="size-4" /> 返回库存
+            </Link>
+          </div>
         </div>
 
         <Card>

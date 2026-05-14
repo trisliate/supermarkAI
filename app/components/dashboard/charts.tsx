@@ -1,16 +1,19 @@
 import { useMemo } from "react";
 import {
-  LineChart, Line, AreaChart, Area,
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { TrendingUp, ShoppingCart, Package, AlertTriangle } from "lucide-react";
+import { TrendingUp, ShoppingCart, Package, AlertTriangle, BarChart3, Target } from "lucide-react";
 import { formatPrice } from "~/lib/utils";
 
 interface ChartsProps {
   trendData: Array<{ date: string; 销售额: number; 采购额: number }>;
   pieData: Array<{ name: string; value: number }>;
   inventoryStatus: Record<string, number>;
+  barData?: Array<{ name: string; value: number; fill?: string }>;
+  radarData?: Array<{ subject: string; value: number; fullMark: number }>;
 }
 
 const muted = "#94a3b8";
@@ -162,70 +165,154 @@ function StatusDonut({ data }: { data: Record<string, number> }) {
   );
 }
 
-export function Charts({ trendData, pieData, inventoryStatus }: ChartsProps) {
+export function BarChartCard({ data, title }: { data: Array<{ name: string; value: number; fill?: string }>; title: string }) {
+  if (!data || data.length === 0) return null;
+  const colors = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1"];
+  return (
+    <ChartCard title={title} icon={BarChart3}>
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={data} barSize={28}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
+            <Tooltip
+              cursor={{ fill: "rgba(148,163,184,0.08)" }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                return (
+                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 shadow-lg">
+                    <p className="text-[11px] text-slate-400 mb-1">{label}</p>
+                    <p className="text-sm font-semibold text-primary">{payload[0].value}</p>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.fill || colors[i % colors.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartCard>
+  );
+}
+
+export function RadarChartCard({ data, title }: { data: Array<{ subject: string; value: number; fullMark: number }>; title: string }) {
+  if (!data || data.length === 0) return null;
+  return (
+    <ChartCard title={title} icon={Target}>
+      <div style={{ width: "100%", height: 220 }}>
+        <ResponsiveContainer width="100%" height={220}>
+          <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
+            <PolarGrid stroke="#e2e8f0" />
+            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: muted }} />
+            <PolarRadiusAxis tick={{ fontSize: 9, fill: muted }} />
+            <Radar name="评分" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={2} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartCard>
+  );
+}
+
+export function Charts({ trendData, pieData, inventoryStatus, barData, radarData }: ChartsProps) {
   const totalSales = useMemo(
     () => trendData.reduce((s, d) => s + d.销售额, 0),
     [trendData],
   );
 
+  const hasTrend = trendData.some((d) => d.销售额 > 0 || d.采购额 > 0);
+  const hasPie = pieData.length > 0;
+  const hasStatus = Object.values(inventoryStatus).some((v) => v > 0);
+  const hasBar = barData && barData.length > 0;
+  const hasRadar = radarData && radarData.length > 0;
+  const hasAnyData = hasTrend || hasPie || hasStatus || hasBar || hasRadar;
+
+  if (!hasAnyData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+        <BarChart3 className="w-12 h-12 mb-3 opacity-30" />
+        <p className="text-sm font-medium">暂无数据</p>
+        <p className="text-xs mt-1">开始录入销售和采购数据后，图表将自动展示</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* Sales trend - Area chart */}
-      <ChartCard title="销售趋势" icon={TrendingUp} value={`¥${formatPrice(totalSales)}`} subtitle="近7天累计">
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={trendData}>
-              <defs>
-                <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
-              <Tooltip content={<MiniTooltip />} />
-              <Area type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={2} fill="url(#salesGrad)" dot={false} activeDot={{ r: 4, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      {hasTrend && (
+        <ChartCard title="销售趋势" icon={TrendingUp} value={`¥${formatPrice(totalSales)}`} subtitle="近7天累计">
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip content={<MiniTooltip />} />
+                <Area type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={2} fill="url(#salesGrad)" dot={false} activeDot={{ r: 4, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      )}
 
       {/* Purchase vs Sales - thin lines */}
-      <ChartCard title="采购 vs 销售" icon={ShoppingCart}>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
-              <Tooltip content={<MiniTooltip />} />
-              <Line type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
-              <Line type="monotone" dataKey="采购额" stroke="#8b5cf6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#8b5cf6", stroke: "#fff", strokeWidth: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex items-center gap-4 mt-2 px-1">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-[2px] rounded-full bg-primary" />
-            <span className="text-[11px] text-slate-400">销售额</span>
+      {hasTrend && (
+        <ChartCard title="采购 vs 销售" icon={ShoppingCart}>
+          <div style={{ width: "100%", height: 220 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip content={<MiniTooltip />} />
+                <Line type="monotone" dataKey="销售额" stroke="#3b82f6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
+                <Line type="monotone" dataKey="采购额" stroke="#8b5cf6" strokeWidth={1.5} dot={false} activeDot={{ r: 3, fill: "#8b5cf6", stroke: "#fff", strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-[2px] rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
-            <span className="text-[11px] text-slate-400">采购额</span>
+          <div className="flex items-center gap-4 mt-2 px-1">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-[2px] rounded-full bg-primary" />
+              <span className="text-[11px] text-slate-400">销售额</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-[2px] rounded-full" style={{ backgroundColor: "#8b5cf6" }} />
+              <span className="text-[11px] text-slate-400">采购额</span>
+            </div>
           </div>
-        </div>
-      </ChartCard>
+        </ChartCard>
+      )}
 
       {/* Category distribution - donut chart */}
-      <ChartCard title="分类分布" icon={Package}>
-        <CategoryDonut data={pieData} />
-      </ChartCard>
+      {hasPie && (
+        <ChartCard title="分类分布" icon={Package}>
+          <CategoryDonut data={pieData} />
+        </ChartCard>
+      )}
 
       {/* Inventory status - donut chart */}
-      <ChartCard title="库存状态" icon={AlertTriangle}>
-        <StatusDonut data={inventoryStatus} />
-      </ChartCard>
+      {hasStatus && (
+        <ChartCard title="库存状态" icon={AlertTriangle}>
+          <StatusDonut data={inventoryStatus} />
+        </ChartCard>
+      )}
+
+      {/* Bar chart (optional) */}
+      {barData && barData.length > 0 && <BarChartCard data={barData} title="排行" />}
+
+      {/* Radar chart (optional) */}
+      {radarData && radarData.length > 0 && <RadarChartCard data={radarData} title="综合评分" />}
     </div>
   );
 }

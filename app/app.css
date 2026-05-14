@@ -196,12 +196,12 @@
   transition: width 300ms ease-in-out, transform 300ms ease-in-out;
 }
 
-/* Sidebar group label fade on collapse */
-[data-sidebar] [data-sidebar-group-label] {
-  transition: opacity 200ms ease-in-out;
+/* Sidebar group label fade on collapse — slower than width transition for visual harmony */
+[data-sidebar] [data-sidebar="group-label"] {
+  transition: opacity 500ms ease-in-out, height 500ms ease-in-out, margin 500ms ease-in-out, padding 500ms ease-in-out;
 }
 
-[data-sidebar][data-collapsible="icon"] [data-sidebar-group-label] {
+[data-sidebar][data-collapsible="icon"] [data-sidebar="group-label"] {
   opacity: 0;
   height: 0;
   margin: 0;

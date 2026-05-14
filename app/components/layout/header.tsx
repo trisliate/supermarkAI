@@ -84,9 +84,10 @@ interface HeaderProps {
   description?: string;
   backTo?: string;
   backLabel?: string;
+  actions?: React.ReactNode;
 }
 
-export function Header({ user, catEnabled, onToggleCat, onOpenChat, description, backTo, backLabel }: HeaderProps) {
+export function Header({ user, catEnabled, onToggleCat, onOpenChat, description, backTo, backLabel, actions }: HeaderProps) {
   const location = useLocation();
   const [showSettings, setShowSettings] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -162,6 +163,11 @@ export function Header({ user, catEnabled, onToggleCat, onOpenChat, description,
 
       {/* Right side */}
       <div className="flex items-center gap-1">
+        {actions && (
+          <div className="flex items-center gap-1 mr-1">
+            {actions}
+          </div>
+        )}
         <NotificationDropdown />
 
         {/* AI assistant */}
@@ -277,7 +283,7 @@ export function Header({ user, catEnabled, onToggleCat, onOpenChat, description,
         {/* Logout */}
         <button
           onClick={() => setShowLogoutConfirm(true)}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:text-slate-500 dark:hover:text-red-400 dark:hover:bg-red-950/20 transition-colors"
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:text-slate-500 dark:hover:text-red-400 dark:hover:bg-red-950/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300 dark:focus:ring-red-700"
           title="退出登录"
         >
           <LogOut className="w-[18px] h-[18px]" />

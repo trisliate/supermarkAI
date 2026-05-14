@@ -106,6 +106,16 @@ export async function loader({ request }: Route.LoaderArgs) {
     const normalStock = await db.inventory.count({ where: { quantity: { gte: 10, lt: 50 } } });
     const abundantStock = await db.inventory.count({ where: { quantity: { gte: 50 } } });
 
+    // Expiry warnings: items expiring within 30 days
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const expiryItems = await db.purchaseOrderItem.findMany({
+      where: { expiryDate: { not: null, lte: thirtyDaysFromNow } },
+      include: { product: { select: { name: true } } },
+      orderBy: { expiryDate: "asc" },
+      take: 10,
+    });
+
     return {
       user,
       role: "admin" as const,
@@ -117,6 +127,11 @@ export async function loader({ request }: Route.LoaderArgs) {
         topProducts: topProductDetails,
         staffPerformance: Array.from(staffMap.values()).sort((a, b) => b.salesAmount - a.salesAmount),
         pendingPurchases: pendingPurchasesList.map((p) => ({ id: p.id, supplier: p.supplier.name, amount: Number(p.totalAmount), createdAt: p.createdAt.toISOString() })),
+        expiryItems: expiryItems.map((item) => ({
+          productName: item.product.name,
+          expiryDate: item.expiryDate!.toISOString(),
+          daysLeft: Math.ceil((item.expiryDate!.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        })),
       },
     };
   }
@@ -204,6 +219,16 @@ export async function loader({ request }: Route.LoaderArgs) {
       orderBy: { quantity: "asc" },
     });
 
+    // Expiry warnings for inventory keeper
+    const thirtyDaysFromNowInv = new Date();
+    thirtyDaysFromNowInv.setDate(thirtyDaysFromNowInv.getDate() + 30);
+    const expiryItemsInv = await db.purchaseOrderItem.findMany({
+      where: { expiryDate: { not: null, lte: thirtyDaysFromNowInv } },
+      include: { product: { select: { name: true } } },
+      orderBy: { expiryDate: "asc" },
+      take: 10,
+    });
+
     return {
       user,
       role: "inventory_keeper" as const,
@@ -233,6 +258,11 @@ export async function loader({ request }: Route.LoaderArgs) {
           createdAt: log.createdAt.toISOString(),
         })),
         slowMoving: recommendations.slowMoving,
+        expiryItems: expiryItemsInv.map((item) => ({
+          productName: item.product.name,
+          expiryDate: item.expiryDate!.toISOString(),
+          daysLeft: Math.ceil((item.expiryDate!.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+        })),
       },
     };
   }

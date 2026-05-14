@@ -102,13 +102,6 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
     >
       {isLoading ? <PageSkeleton columns={7} rows={6} /> : (
       <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Link to="/inventory/log" className={cn(buttonVariants({ variant: "outline" }))}>
-            <History className="size-4" /> 出入库记录
-          </Link>
-        </div>
-
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
@@ -141,15 +134,22 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-        {/* Filter tabs */}
-        <Tabs value={filter} onValueChange={setFilter}>
-          <TabsList>
-            <TabsTrigger value="all">全部 ({counts.all})</TabsTrigger>
-            <TabsTrigger value="out" className="text-red-600">缺货 ({counts.out})</TabsTrigger>
-            <TabsTrigger value="low" className="text-amber-600">偏低 ({counts.low})</TabsTrigger>
-            <TabsTrigger value="normal">正常 ({counts.normal})</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Filter tabs + Action */}
+        <div className="flex items-center gap-3">
+          <Tabs value={filter} onValueChange={setFilter}>
+            <TabsList>
+              <TabsTrigger value="all">全部 ({counts.all})</TabsTrigger>
+              <TabsTrigger value="out" className="text-red-600">缺货 ({counts.out})</TabsTrigger>
+              <TabsTrigger value="low" className="text-amber-600">偏低 ({counts.low})</TabsTrigger>
+              <TabsTrigger value="normal">正常 ({counts.normal})</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="ml-auto">
+            <Link to="/inventory/log" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <History className="size-4" /> 出入库记录
+            </Link>
+          </div>
+        </div>
 
         {/* Table */}
         <Card>

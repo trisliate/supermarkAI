@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Bell, ShoppingCart, Package, AlertTriangle, TrendingUp, Clock, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Bell, ShoppingCart, Package, AlertTriangle, TrendingUp, Clock, X, ExternalLink } from "lucide-react";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
+import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 
 interface Notification {
   id: string;
@@ -25,10 +29,33 @@ const typeColors = {
   system: "text-slate-500 bg-slate-50 dark:bg-slate-800",
 };
 
+const typeBadgeColors = {
+  sale: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+  purchase: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  stock: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  system: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400",
+};
+
+const typeLabels = {
+  sale: "销售",
+  purchase: "采购",
+  stock: "库存",
+  system: "系统",
+};
+
+// Dynamic notifications that navigate to specific pages
+const dynamicNavMap: Record<string, string> = {
+  "stock-low": "/inventory",
+  "purchase-pending": "/purchases",
+  "sales-today": "/sales",
+};
+
 export function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [detailNotif, setDetailNotif] = useState<Notification | null>(null);
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const navigate = useNavigate();
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -47,6 +74,18 @@ export function NotificationDropdown() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  const markRead = async (id: string) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    try {
+      const fd = new FormData();
+      fd.set("intent", "markRead");
+      fd.set("notificationId", id);
+      await fetch("/api/notifications", { method: "POST", body: fd });
+    } catch {
+      // silent
+    }
+  };
+
   const markAllRead = async () => {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length === 0) return;
@@ -61,7 +100,8 @@ export function NotificationDropdown() {
     }
   };
 
-  const removeNotification = async (id: string) => {
+  const removeNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     try {
       const fd = new FormData();
@@ -71,6 +111,23 @@ export function NotificationDropdown() {
     } catch {
       // silent
     }
+  };
+
+  const handleNotificationClick = async (n: Notification) => {
+    // Mark as read instantly
+    if (!n.read) {
+      await markRead(n.id);
+    }
+
+    // Dynamic notifications navigate to their pages
+    if (dynamicNavMap[n.id]) {
+      setOpen(false);
+      navigate(dynamicNavMap[n.id]);
+      return;
+    }
+
+    // Persistent notifications open detail dialog
+    setDetailNotif(n);
   };
 
   const formatTime = (iso: string) => {
@@ -84,96 +141,128 @@ export function NotificationDropdown() {
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => { setOpen(!open); if (!open) fetchNotifications(); }}
-        className="relative w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-        title="通知"
-      >
-        <Bell className="w-[18px] h-[18px]" />
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+    <>
+      <div className="relative">
+        <button
+          onClick={() => { setOpen(!open); if (!open) fetchNotifications(); }}
+          className="relative w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+          title="通知"
+        >
+          <Bell className="w-[18px] h-[18px]" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
+              {unreadCount}
+            </span>
+          )}
+        </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">通知</h3>
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllRead}
-                  className="text-xs text-blue-500 hover:text-blue-600"
-                >
-                  全部已读
-                </button>
-              )}
-            </div>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">通知</h3>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-xs text-blue-500 hover:text-blue-600"
+                  >
+                    全部已读
+                  </button>
+                )}
+              </div>
 
-            {/* Notification list */}
-            <ScrollArea className="max-h-80">
-              {notifications.length === 0 ? (
-                <div className="py-12 text-center">
-                  <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400">暂无通知</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {notifications.map((n) => {
-                    const Icon = typeIcons[n.type];
-                    return (
-                      <div
-                        key={n.id}
-                        className={`relative px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${!n.read ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}`}
-                      >
-                        <button
-                          onClick={() => removeNotification(n.id)}
-                          className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+              {/* Notification list */}
+              <ScrollArea className="max-h-80">
+                {notifications.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400">暂无通知</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {notifications.map((n) => {
+                      const Icon = typeIcons[n.type];
+                      const isDynamic = !!dynamicNavMap[n.id];
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => handleNotificationClick(n)}
+                          className={`relative px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer ${!n.read ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}`}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <div className="flex gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${typeColors[n.type]}`}>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0 flex-1 pr-4">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{n.title}</p>
-                              {!n.read && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />}
+                          <button
+                            onClick={(e) => removeNotification(n.id, e)}
+                            className="absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="flex gap-3">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${typeColors[n.type]}`}>
+                              <Icon className="w-4 h-4" />
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.description}</p>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5" />
-                              {formatTime(n.time)}
-                            </p>
+                            <div className="min-w-0 flex-1 pr-4">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{n.title}</p>
+                                {!n.read && <span className="w-1.5 h-1.5 bg-blue-500 rounded-full shrink-0" />}
+                                {isDynamic && <ExternalLink className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />}
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.description}</p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
+                                <Clock className="w-2.5 h-2.5" />
+                                {formatTime(n.time)}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Footer */}
+              {notifications.length > 0 && (
+                <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 text-center">
+                  <button
+                    onClick={() => { setNotifications([]); setOpen(false); }}
+                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  >
+                    清空所有通知
+                  </button>
                 </div>
               )}
-            </ScrollArea>
+            </div>
+          </>
+        )}
+      </div>
 
-            {/* Footer */}
-            {notifications.length > 0 && (
-              <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 text-center">
-                <button
-                  onClick={() => { setNotifications([]); setOpen(false); }}
-                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                >
-                  清空所有通知
-                </button>
+      {/* Notification detail dialog */}
+      <Dialog open={detailNotif !== null} onOpenChange={(o) => { if (!o) setDetailNotif(null); }}>
+        <DialogContent className="max-w-sm">
+          {detailNotif && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {(() => { const Icon = typeIcons[detailNotif.type]; return <Icon className="size-4" />; })()}
+                  {detailNotif.title}
+                </DialogTitle>
+                <DialogDescription>
+                  <Badge variant="secondary" className={`text-[10px] ${typeBadgeColors[detailNotif.type]}`}>
+                    {typeLabels[detailNotif.type]}
+                  </Badge>
+                  <span className="ml-2 text-[10px] text-slate-400">
+                    {new Date(detailNotif.time).toLocaleString("zh-CN")}
+                  </span>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                {detailNotif.description}
               </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

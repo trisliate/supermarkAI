@@ -35,7 +35,7 @@ interface ChatMessage {
 const providerBaseUrls: Record<string, string> = {
   dashscope: "https://dashscope.aliyuncs.com/compatible-mode/v1",
   deepseek: "https://api.deepseek.com/v1",
-  mimo: "https://api.deepseek.com/v1",
+  mimo: "https://token-plan-sgp.xiaomimimo.com/anthropic",
   glm: "https://open.bigmodel.cn/api/paas/v4",
   moonshot: "https://api.moonshot.cn/v1",
   ernie: "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat",
@@ -524,11 +524,42 @@ async function buildSystemPrompt(): Promise<string> {
 - 如果用户问的问题需要去某个页面操作，用 navigate 工具帮他们跳转`;
 }
 
-async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
+async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[] }> {
   const baseUrl = config.baseUrl || providerBaseUrls[config.provider] || "";
   const decryptedKey = decrypt(config.apiKey);
+  const protocol = config.protocol || "openai";
 
-  // Most Chinese LLMs support OpenAI-compatible format
+  if (protocol === "anthropic") {
+    // Anthropic native protocol
+    const systemMsg = messages.find((m) => m.role === "system");
+    const nonSystemMsgs = messages.filter((m) => m.role !== "system");
+
+    const res = await fetch(`${baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": decryptedKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        max_tokens: 1024,
+        system: systemMsg?.content || undefined,
+        messages: nonSystemMsgs.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content || "" })),
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`LLM API error (${res.status}): ${errText.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const textBlock = data.content?.find((b: { type: string }) => b.type === "text");
+    return { content: textBlock?.text || "" };
+  }
+
+  // OpenAI-compatible protocol (default)
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {

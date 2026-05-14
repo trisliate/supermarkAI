@@ -24,13 +24,18 @@ export function encrypt(text: string): string {
 }
 
 export function decrypt(encryptedText: string): string {
-  const key = getKey();
-  const [ivHex, tagHex, dataHex] = encryptedText.split(":");
-  if (!ivHex || !tagHex || !dataHex) throw new Error("Invalid encrypted format");
-  const iv = Buffer.from(ivHex, "hex");
-  const tag = Buffer.from(tagHex, "hex");
-  const data = Buffer.from(dataHex, "hex");
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(tag);
-  return decipher.update(data) + decipher.final("utf-8");
+  // Check if this looks like an encrypted value (iv:tag:ciphertext format)
+  const parts = encryptedText.split(":");
+  if (parts.length === 3 && parts.every((p) => /^[0-9a-f]+$/i.test(p))) {
+    const [ivHex, tagHex, dataHex] = parts;
+    const key = getKey();
+    const iv = Buffer.from(ivHex, "hex");
+    const tag = Buffer.from(tagHex, "hex");
+    const data = Buffer.from(dataHex, "hex");
+    const decipher = createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(tag);
+    return decipher.update(data) + decipher.final("utf-8");
+  }
+  // Legacy plain-text key — return as-is
+  return encryptedText;
 }

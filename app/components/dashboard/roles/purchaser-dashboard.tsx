@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Link } from "react-router";
 import {
   ShoppingCart, DollarSign, Truck, AlertTriangle,
@@ -7,6 +8,8 @@ import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
 import type { RestockItem } from "~/lib/recommendation.server";
 import { StatCard } from "../stat-card";
+
+const BarChartCard = lazy(() => import("../charts").then((m) => ({ default: m.BarChartCard })));
 
 interface PurchaserDashboardProps {
   stats: {
@@ -38,7 +41,7 @@ const urgencyStyles: Record<string, string> = {
 };
 
 export function PurchaserDashboard({
-  stats, restockItems, recentPurchases, suppliers,
+  stats, restockItems, recentPurchases, suppliers, supplierSpend,
 }: PurchaserDashboardProps) {
   const urgentItems = restockItems.filter((r) => r.urgency !== "sufficient");
 
@@ -126,6 +129,19 @@ export function PurchaserDashboard({
             <Zap className="w-4 h-4" />
             新建采购单
           </Link>
+
+          {/* Supplier spend chart */}
+          {supplierSpend && supplierSpend.length > 0 && (
+            <div className="bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4 text-blue-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">供应商支出</span>
+              </div>
+              <Suspense fallback={<div className="h-[200px] bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />}>
+                <BarChartCard data={supplierSpend.map((s) => ({ name: s.name, value: s.amount }))} title="" />
+              </Suspense>
+            </div>
+          )}
 
           {/* Suppliers */}
           {suppliers.length > 0 && (

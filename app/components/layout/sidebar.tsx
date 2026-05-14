@@ -62,7 +62,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "用户管理", href: "/users", roles: ["admin"], icon: Users },
       { label: "通知管理", href: "/notifications", roles: ["admin"], icon: Bell },
-      { label: "API Key 配置", href: "/settings/ai", roles: ["admin"], icon: KeyRound },
+      { label: "API Key", href: "/settings/ai", roles: ["admin"], icon: KeyRound },
     ],
   },
 ];
@@ -80,10 +80,10 @@ export function AppSidebar({ user }: { user: AuthUser }) {
       className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
       {/* Header: logo stays fixed on left, text slides out to right */}
-      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 px-3 py-3 group-data-[collapsible=icon]:px-2">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <Store className="w-7 h-7 text-blue-500 shrink-0" />
-          <div className="flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out max-w-[120px] opacity-100 group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">
+      <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 px-3 py-3 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
+        <div className="flex items-center gap-3 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+          <Store className="text-blue-500 shrink-0 w-7 h-7 group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:h-4 transition-[width,height] duration-300 ease-in-out" />
+          <div className="flex flex-col min-w-0 overflow-hidden max-w-[120px] opacity-100 group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0" style={{ transition: "max-width 300ms ease-in-out, opacity 200ms ease-in-out" }}>
             <span className="text-sm font-bold text-slate-800 dark:text-white tracking-tight whitespace-nowrap leading-tight">SuperMarket</span>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 whitespace-nowrap leading-tight">智慧运营系统</span>
           </div>

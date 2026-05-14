@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Store, AlertCircle, Loader2, Package, Users, Truck, BarChart3, ShieldCheck, Zap, Brain, Cpu, Sparkles, Bot, Activity, Network } from "lucide-react";
+import { Store, AlertCircle, Loader2, Package, Users, Truck, BarChart3, ShieldCheck, Zap, Brain, Cpu, Sparkles, Bot, Activity, Network, Bell, TrendingUp, Warehouse, Shield } from "lucide-react";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUserSession(request);
@@ -36,6 +36,10 @@ const modules = [
   { icon: Users, label: "多角色协作", desc: "店长、采购、理货、收银各司其职", anim: "animate-[float-2_6s_ease-in-out_infinite_0.3s]", style: "top-[18%] right-[8%]" },
   { icon: Activity, label: "数据驱动", desc: "销售趋势、库存预警一目了然", anim: "animate-[float-3_7s_ease-in-out_infinite_0.8s]", style: "bottom-[30%] left-[4%]" },
   { icon: Cpu, label: "智能补货", desc: "AI 预测销量、自动生成采购建议", anim: "animate-[float-4_5.5s_ease-in-out_infinite_1.2s]", style: "bottom-[12%] right-[6%]" },
+  { icon: Bell, label: "库存预警", desc: "实时监控库存水位、自动提醒补货", anim: "animate-[float-5_6.5s_ease-in-out_infinite_0.5s]", style: "top-[45%] left-[3%]" },
+  { icon: Truck, label: "供应商管理", desc: "供应商评估、采购比价一站式管理", anim: "animate-[float-6_7.5s_ease-in-out_infinite_1s]", style: "top-[55%] right-[5%]" },
+  { icon: TrendingUp, label: "销售分析", desc: "热销排行、时段分析、利润报表", anim: "animate-[float-7_5.8s_ease-in-out_infinite_0.7s]", style: "bottom-[45%] right-[10%]" },
+  { icon: Shield, label: "权限管控", desc: "细粒度权限、操作审计、安全可靠", anim: "animate-[float-8_6.2s_ease-in-out_infinite_1.5s]", style: "top-[35%] left-[8%]" },
 ];
 
 const aiOrbs = [
@@ -134,6 +138,10 @@ export default function LoginPage() {
         @keyframes float-2 { 0%,100%{transform:translateY(0) rotate(5deg) scale(1)} 30%{transform:translateY(-20px) rotate(8deg) scale(1.04)} 60%{transform:translateY(-28px) rotate(0deg) scale(1.06)} 80%{transform:translateY(-8px) rotate(3deg) scale(1.01)} }
         @keyframes float-3 { 0%,100%{transform:translateY(0) rotate(3deg) scale(1)} 35%{transform:translateY(-22px) rotate(-2deg) scale(1.05)} 65%{transform:translateY(-30px) rotate(6deg) scale(1.07)} 85%{transform:translateY(-6px) rotate(1deg) scale(1.02)} }
         @keyframes float-4 { 0%,100%{transform:translateY(0) rotate(-5deg) scale(1)} 20%{transform:translateY(-15px) rotate(-8deg) scale(1.03)} 50%{transform:translateY(-26px) rotate(3deg) scale(1.06)} 70%{transform:translateY(-12px) rotate(-2deg) scale(1.02)} }
+        @keyframes float-5 { 0%,100%{transform:translateY(0) rotate(6deg) scale(1)} 30%{transform:translateY(-20px) rotate(2deg) scale(1.04)} 60%{transform:translateY(-28px) rotate(-4deg) scale(1.06)} 80%{transform:translateY(-10px) rotate(4deg) scale(1.02)} }
+        @keyframes float-6 { 0%,100%{transform:translateY(0) rotate(-4deg) scale(1)} 25%{transform:translateY(-16px) rotate(-7deg) scale(1.03)} 55%{transform:translateY(-24px) rotate(5deg) scale(1.05)} 75%{transform:translateY(-8px) rotate(-2deg) scale(1.01)} }
+        @keyframes float-7 { 0%,100%{transform:translateY(0) rotate(7deg) scale(1)} 35%{transform:translateY(-22px) rotate(1deg) scale(1.04)} 65%{transform:translateY(-30px) rotate(-3deg) scale(1.07)} 85%{transform:translateY(-6px) rotate(5deg) scale(1.02)} }
+        @keyframes float-8 { 0%,100%{transform:translateY(0) rotate(-6deg) scale(1)} 20%{transform:translateY(-14px) rotate(-9deg) scale(1.02)} 45%{transform:translateY(-22px) rotate(4deg) scale(1.05)} 70%{transform:translateY(-10px) rotate(-1deg) scale(1.01)} }
         @keyframes orb-1 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.4} 25%{transform:translate(30px,-40px) scale(1.5);opacity:0.8} 50%{transform:translate(-20px,-60px) scale(0.8);opacity:0.3} 75%{transform:translate(40px,-20px) scale(1.3);opacity:0.7} }
         @keyframes orb-2 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.3} 33%{transform:translate(-40px,30px) scale(1.8);opacity:0.9} 66%{transform:translate(20px,-50px) scale(0.6);opacity:0.2} }
         @keyframes orb-3 { 0%,100%{transform:translate(0,0) scale(1);opacity:0.5} 20%{transform:translate(50px,20px) scale(1.2);opacity:0.7} 40%{transform:translate(-30px,-40px) scale(0.9);opacity:0.3} 60%{transform:translate(20px,50px) scale(1.6);opacity:0.8} 80%{transform:translate(-40px,10px) scale(0.7);opacity:0.4} }
@@ -241,9 +249,9 @@ export default function LoginPage() {
                     if (userInput) userInput.value = d.user;
                     if (passInput) passInput.value = d.pass;
                   }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all text-left group"
+                  className="flex items-center gap-2.5 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-left"
                 >
-                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${d.color} group-hover:scale-110 transition-transform`}>
+                  <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${d.color}`}>
                     <d.icon className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
@@ -251,7 +259,7 @@ export default function LoginPage() {
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{d.user}</p>
                   </div>
                   <div className="ml-auto shrink-0">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
                       {d.ai}
                     </span>
                   </div>

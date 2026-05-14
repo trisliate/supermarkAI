@@ -141,14 +141,10 @@ export default function UsersPage({ loaderData }: Route.ComponentProps) {
     >
       {isLoading ? <PageSkeleton columns={6} rows={6} /> : (
       <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div></div>
-          <Button onClick={() => setShowNew(true)}>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setShowNew(true)} size="sm" className="shrink-0">
             <Plus className="size-4" /> 新增用户
           </Button>
-        </div>
-
-        <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <Input placeholder="搜索用户名或姓名..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
