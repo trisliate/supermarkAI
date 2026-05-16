@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
-import { Store, AlertCircle, Loader2, Package, Users, Truck, BarChart3, ShieldCheck, Zap, Brain, Cpu, Sparkles, Bot, Activity, Network, Bell, TrendingUp, Warehouse, Shield } from "lucide-react";
+import { Store, AlertCircle, Loader2, Package, Users, Truck, BarChart3, ShieldCheck, Zap, Brain, Cpu, Sparkles, Activity, Bell, TrendingUp, Shield } from "lucide-react";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUserSession(request);

@@ -16,11 +16,13 @@ import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const product = await db.product.findUnique({ where: { id: Number(params.id) } });
   if (!product) throw new Response("商品不存在", { status: 404 });
   const categories = await db.category.findMany({ orderBy: { name: "asc" } });
   const serializedProduct = { ...product, price: Number(product.price) };
-  return { user, product: serializedProduct, categories };
+  return { user, product: serializedProduct, categories, routePermissions };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -36,6 +38,9 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!name || !categoryId || !price || !unit) {
     return { error: "必填字段不能为空" };
   }
+  if (!formData.get("shelfLifeDays") || !formData.get("productionDate")) {
+    return { error: "保质期和生产日期为必填项" };
+  }
 
   await db.product.update({
     where: { id: Number(params.id) },
@@ -50,12 +55,12 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function EditProductPage() {
-  const { user, product, categories } = useLoaderData<typeof loader>();
+  const { user, product, categories, routePermissions } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={routePermissions}>
       <FormPage
         icon={Pencil}
         title="编辑商品"
@@ -97,12 +102,12 @@ export default function EditProductPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" defaultValue={product.shelfLifeDays ?? ""} placeholder="如 365" />
+                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-red-500">*</span></Label>
+                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" required defaultValue={product.shelfLifeDays ?? ""} placeholder="如 365" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="productionDate" name="productionDate" type="date" defaultValue={product.productionDate ? new Date(product.productionDate).toISOString().split("T")[0] : ""} />
+                <Label htmlFor="productionDate">生产日期<span className="text-red-500">*</span></Label>
+                <Input id="productionDate" name="productionDate" type="date" required className="h-10" defaultValue={product.productionDate ? new Date(product.productionDate).toISOString().split("T")[0] : ""} />
               </div>
             </div>
             <div className="space-y-2">

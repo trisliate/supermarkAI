@@ -12,12 +12,14 @@ import { Label } from "~/components/ui/label";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SearchableSelect } from "~/components/ui/searchable-select";
-import { Loader2, AlertCircle, Plus, Minus, Trash2, ShoppingCart, Package, ArrowLeftRight } from "lucide-react";
+import { Loader2, AlertCircle, Plus, Minus, Trash2, ShoppingCart, Package } from "lucide-react";
 import { flashRedirect } from "~/lib/flash.server";
 import { useLoaderData } from "react-router";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const [suppliers, products, supplierProducts] = await Promise.all([
     db.supplier.findMany({ where: { status: "active" }, orderBy: { name: "asc" } }),
     db.product.findMany({ where: { status: "active" }, orderBy: { name: "asc" } }),
@@ -49,6 +51,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     user, suppliers, products: serializedProducts,
     supplierProductMap: Object.fromEntries(supplierProductMap),
     productSupplierMap: Object.fromEntries(productSupplierMap),
+    routePermissions,
   };
 }
 
@@ -119,7 +122,7 @@ interface OrderItem {
 }
 
 export default function NewPurchasePage() {
-  const { user, suppliers, products, supplierProductMap, productSupplierMap } = useLoaderData<typeof loader>();
+  const { user, suppliers, products, supplierProductMap, productSupplierMap, routePermissions } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -196,7 +199,7 @@ export default function NewPurchasePage() {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={routePermissions}
       description="选择供应商并添加采购商品"
       backTo="/purchases"
       backLabel="返回采购列表"

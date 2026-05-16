@@ -21,8 +21,7 @@ import { Plus, Pencil, Trash2, Users, Search, Loader2, UserCog } from "lucide-re
 import { toast } from "sonner";
 import type { Role } from "@prisma/client";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
-
-const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "~/lib/constants";
 
 const roleBadgeVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   admin: "destructive",
@@ -33,6 +32,8 @@ const roleBadgeVariant: Record<string, "default" | "secondary" | "destructive" |
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, users] = await Promise.all([
@@ -44,7 +45,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
     }),
   ]);
-  return { user, users, total, page, pageSize: PAGE_SIZE };
+  return { user, users, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -137,6 +138,7 @@ export default function UsersPage({ loaderData }: Route.ComponentProps) {
   return (
     <AppLayout
       user={user}
+      routePermissions={loaderData.routePermissions}
       description="管理系统用户和权限"
     >
       {isLoading ? <PageSkeleton columns={6} rows={6} /> : (

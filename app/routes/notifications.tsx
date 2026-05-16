@@ -1,4 +1,4 @@
-import { useFetcher, useLoaderData } from "react-router";
+import { useFetcher } from "react-router";
 import { useState, useEffect } from "react";
 import type { Route } from "./+types/notifications";
 import { requireRole } from "~/lib/auth.server";
@@ -41,11 +41,13 @@ const roleOptions = [
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const notifications = await db.notification.findMany({
     orderBy: { createdAt: "desc" },
     take: 50,
   });
-  return { user, notifications };
+  return { user, notifications, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -108,6 +110,7 @@ export default function NotificationsPage({ loaderData }: Route.ComponentProps) 
   return (
     <AppLayout
       user={user}
+      routePermissions={loaderData.routePermissions}
       description="发送和管理系统通知"
     >
       <div className="space-y-4 animate-fade-in">

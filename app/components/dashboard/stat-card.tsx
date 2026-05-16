@@ -25,11 +25,11 @@ function SparklineSVG({ data, color }: { data: number[]; color: string }) {
     return `${x},${y}`;
   });
   const lineColor = color.includes("emerald") || color.includes("green")
-    ? "#10b981" : color.includes("blue")
-    ? "#3b82f6" : color.includes("amber") || color.includes("yellow")
-    ? "#f59e0b" : color.includes("purple") || color.includes("violet")
-    ? "#8b5cf6" : color.includes("cyan") || color.includes("teal")
-    ? "#06b6d4" : "#6366f1";
+    ? "#34d399" : color.includes("blue")
+    ? "#60a5fa" : color.includes("amber") || color.includes("yellow")
+    ? "#fbbf24" : color.includes("purple") || color.includes("violet")
+    ? "#a78bfa" : color.includes("cyan") || color.includes("teal")
+    ? "#22d3ee" : "#818cf8";
 
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-60">
@@ -54,7 +54,7 @@ export function StatCard({ label, value, icon: Icon, color, trend, subtitle, spa
   }, [delay]);
 
   return (
-    <div className={`bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-500 group shadow-sm ${
+    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-500 group ${
       visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
     }`}>
       <div className="flex items-start justify-between">
@@ -62,7 +62,7 @@ export function StatCard({ label, value, icon: Icon, color, trend, subtitle, spa
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{label}</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5 tracking-tight">{value}</p>
           {trend && (
-            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.isUp ? "text-emerald-600" : "text-red-500"}`}>
+            <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.isUp ? "text-emerald-400" : "text-red-400"}`}>
               <span>{trend.isUp ? "↑" : "↓"}</span>
               <span>{Math.abs(trend.value)}%</span>
               <span className="text-slate-400 dark:text-slate-500">vs 昨日</span>
@@ -73,8 +73,8 @@ export function StatCard({ label, value, icon: Icon, color, trend, subtitle, spa
           )}
         </div>
         <div className="flex flex-col items-end gap-1">
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shadow-sm ${color} group-hover:scale-105 transition-transform`}>
-            <Icon className="w-5 h-5 text-white" />
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${color}/15 group-hover:scale-105 transition-transform`}>
+            <Icon className="w-5 h-5 text-slate-600 dark:text-white/80" />
           </div>
           {sparkline && <SparklineSVG data={sparkline} color={color} />}
         </div>

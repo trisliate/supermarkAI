@@ -18,15 +18,16 @@ import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { SearchableSelect } from "~/components/ui/searchable-select";
-import { Plus, Pencil, Trash2, Package, Search, Loader2, Truck } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, Loader2, Truck, AlertTriangle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
 import { ImageUpload } from "~/components/ui/image-upload";
-
-const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "~/lib/constants";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser", "inventory_keeper"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
 
@@ -42,7 +43,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     db.supplier.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.supplierProduct.findMany({ select: { supplierId: true, productId: true } }),
   ]);
-  const serializedProducts = products.map((p) => ({ ...p, price: Number(p.price), hasImage: !!p.image, image: undefined }));
+  const serializedProducts = products.map((p) => ({
+    ...p,
+    price: Number(p.price),
+    hasImage: !!p.image,
+    image: undefined,
+    shelfLifeDays: p.shelfLifeDays,
+    productionDate: p.productionDate ? p.productionDate.toISOString() : null,
+  }));
 
   // Build productId -> supplierId[] map
   const bindingMap: Record<number, number[]> = {};
@@ -51,7 +59,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     bindingMap[sp.productId].push(sp.supplierId);
   }
 
-  return { user, products: serializedProducts, categories, suppliers, bindingMap, total, page, pageSize: PAGE_SIZE };
+  return { user, products: serializedProducts, categories, suppliers, bindingMap, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -87,6 +95,9 @@ export async function action({ request }: Route.ActionArgs) {
     if (!name || !categoryId || !price || !unit) {
       return { error: "必填字段不能为空", intent: "update" };
     }
+    if (!shelfLifeDays || !formData.get("productionDate")) {
+      return { error: "保质期和生产日期为必填项", intent: "update" };
+    }
 
     const updateData: Record<string, unknown> = { name, categoryId, price, unit, description, status, shelfLifeDays, productionDate };
     if (imageDataUrl && imageDataUrl.startsWith("data:image")) {
@@ -113,13 +124,16 @@ export async function action({ request }: Route.ActionArgs) {
     if (!name || !categoryId || !price || !unit) {
       return { error: "必填字段不能为空", intent: "create" };
     }
+    if (!shelfLifeDays || !formData.get("productionDate")) {
+      return { error: "保质期和生产日期为必填项", intent: "create" };
+    }
 
     const createData: Record<string, unknown> = { name, categoryId, price, unit, description, shelfLifeDays, productionDate };
     if (imageDataUrl && imageDataUrl.startsWith("data:image")) {
       createData.image = Buffer.from(imageDataUrl.split(",")[1], "base64");
     }
 
-    const product = await db.product.create({ data: createData });
+    const product = await db.product.create({ data: createData as any });
     await db.inventory.create({ data: { productId: product.id, quantity: 0 } });
     return { ok: true, intent: "create" };
   }
@@ -198,7 +212,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={loaderData.routePermissions}
       description="管理商品信息和库存"
     >
       {isLoading ? <PageSkeleton columns={8} rows={6} /> : (
@@ -230,12 +244,13 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-16">ID</TableHead>
+                  <TableHead className="w-12">图片</TableHead>
                   <TableHead>名称</TableHead>
                   <TableHead>分类</TableHead>
                   <TableHead>单价</TableHead>
                   <TableHead>单位</TableHead>
                   <TableHead>库存</TableHead>
+                  <TableHead>保质期</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
@@ -243,7 +258,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                       <Package className="size-8 mx-auto mb-2 opacity-50" />
                       {search ? "没有找到匹配的商品" : "暂无商品数据"}
                     </TableCell>
@@ -253,9 +268,46 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                     const stock = p.inventory?.quantity ?? 0;
                     const isLow = stock < 10;
                     const isOut = stock === 0;
+
+                    // Expiry calculation
+                    let daysLeft: number | null = null;
+                    let expiryColor = "";
+                    let expiryLabel = "";
+                    if (p.productionDate && p.shelfLifeDays) {
+                      const prodDate = new Date(p.productionDate);
+                      const expiryDate = new Date(prodDate.getTime() + p.shelfLifeDays * 86400000);
+                      daysLeft = Math.ceil((expiryDate.getTime() - Date.now()) / 86400000);
+                      if (daysLeft <= 0) {
+                        expiryColor = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+                        expiryLabel = "已过期";
+                      } else if (daysLeft <= 7) {
+                        expiryColor = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+                        expiryLabel = `${daysLeft}天`;
+                      } else if (daysLeft <= 30) {
+                        expiryColor = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+                        expiryLabel = `${daysLeft}天`;
+                      } else {
+                        expiryColor = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
+                        expiryLabel = `${daysLeft}天`;
+                      }
+                    }
+
                     return (
                       <TableRow key={p.id} className={isOut ? "bg-red-50/50 dark:bg-red-950/20" : isLow ? "bg-amber-50/30 dark:bg-amber-950/10" : ""}>
-                        <TableCell className="font-mono text-muted-foreground text-xs">{p.id}</TableCell>
+                        <TableCell>
+                          {p.hasImage ? (
+                            <img
+                              src={`/api/product-image?productId=${p.id}`}
+                              alt={p.name}
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                              <Package className="w-4 h-4 text-slate-400" />
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium">{p.name}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-normal text-xs">{p.category.name}</Badge>
@@ -274,6 +326,16 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                               {stock}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {expiryLabel ? (
+                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium", expiryColor)}>
+                              {daysLeft !== null && daysLeft <= 7 ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                              {expiryLabel}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={p.status === "active" ? "default" : "secondary"} className="text-xs">
@@ -317,7 +379,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
 
       {/* New Product Dialog */}
       <Dialog open={showNew} onOpenChange={(open) => { if (!open) { setShowNew(false); setNewCategoryId(""); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="size-4" /> 新增商品
@@ -364,12 +426,12 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new-shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="new-shelfLifeDays" name="shelfLifeDays" type="number" min="1" placeholder="如 365" />
+                <Label htmlFor="new-shelfLifeDays">保质期（天）<span className="text-red-500">*</span></Label>
+                <Input id="new-shelfLifeDays" name="shelfLifeDays" type="number" min="1" required placeholder="如 365" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="new-productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="new-productionDate" name="productionDate" type="date" />
+                <Label htmlFor="new-productionDate">生产日期<span className="text-red-500">*</span></Label>
+                <Input id="new-productionDate" name="productionDate" type="date" required className="h-10" />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -389,7 +451,7 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
 
       {/* Edit Product Dialog */}
       <Dialog open={editProduct !== null} onOpenChange={(open) => { if (!open) setEditProduct(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="size-4" /> 编辑商品
@@ -440,12 +502,12 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                  <Input id="edit-shelfLifeDays" name="shelfLifeDays" type="number" min="1" defaultValue={editProduct.shelfLifeDays ?? ""} placeholder="如 365" />
+                  <Label htmlFor="edit-shelfLifeDays">保质期（天）<span className="text-red-500">*</span></Label>
+                  <Input id="edit-shelfLifeDays" name="shelfLifeDays" type="number" min="1" required defaultValue={editProduct.shelfLifeDays ?? ""} placeholder="如 365" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit-productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                  <Input id="edit-productionDate" name="productionDate" type="date" defaultValue={editProduct.productionDate ? new Date(editProduct.productionDate).toISOString().split("T")[0] : ""} />
+                  <Label htmlFor="edit-productionDate">生产日期<span className="text-red-500">*</span></Label>
+                  <Input id="edit-productionDate" name="productionDate" type="date" required className="h-10" defaultValue={editProduct.productionDate ? new Date(editProduct.productionDate).toISOString().split("T")[0] : ""} />
                 </div>
               </div>
               <div className="space-y-1.5">

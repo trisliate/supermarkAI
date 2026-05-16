@@ -11,12 +11,11 @@ import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
-import { Plus, Eye, CheckCircle, XCircle, ShoppingCart, Calendar, User, Building2, Search, Ban } from "lucide-react";
+import { Plus, Eye, CheckCircle, XCircle, ShoppingCart, Calendar, User, Building2, Search, Ban, ArrowDownToLine } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
-
-const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "~/lib/constants";
 
 const statusLabels: Record<string, string> = {
   pending: "待审批",
@@ -43,7 +42,9 @@ const statusDot: Record<string, string> = {
 };
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireRole(request, ["admin", "purchaser"]);
+  const user = await requireRole(request, ["admin", "purchaser", "inventory_keeper"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, purchases] = await Promise.all([
@@ -60,7 +61,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     totalAmount: Number(p.totalAmount),
     items: p.items.map((item) => ({ ...item, unitPrice: Number(item.unitPrice) })),
   }));
-  return { user, purchases: serializedPurchases, total, page, pageSize: PAGE_SIZE };
+  return { user, purchases: serializedPurchases, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -75,6 +76,23 @@ export async function action({ request }: Route.ActionArgs) {
     await db.purchaseOrder.update({ where: { id }, data: { status: "rejected" } });
   } else if (intent === "cancel") {
     await db.purchaseOrder.update({ where: { id }, data: { status: "cancelled" } });
+  } else if (intent === "receive" && (user.role === "admin" || user.role === "inventory_keeper")) {
+    const purchase = await db.purchaseOrder.findUnique({ where: { id }, include: { items: true } });
+    if (purchase && purchase.status === "approved") {
+      await db.$transaction(async (tx) => {
+        for (const item of purchase.items) {
+          await tx.inventory.upsert({
+            where: { productId: item.productId },
+            update: { quantity: { increment: item.quantity } },
+            create: { productId: item.productId, quantity: item.quantity },
+          });
+          await tx.inventoryLog.create({
+            data: { productId: item.productId, type: "IN", quantity: item.quantity, reason: `采购入库 PO-${String(id).padStart(4, "0")}`, userId: user.id },
+          });
+        }
+        await tx.purchaseOrder.update({ where: { id }, data: { status: "received" } });
+      });
+    }
   }
 
   return { ok: true };
@@ -85,11 +103,14 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
   const fetcher = useFetcher();
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [rejectId, setRejectId] = useState<number | null>(null);
+  const [approveId, setApproveId] = useState<number | null>(null);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const isCancelling = fetcher.state !== "idle";
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading" && navigation.location?.pathname === "/purchases";
+
+  const [receiveId, setReceiveId] = useState<number | null>(null);
 
   useEffect(() => {
     if (fetcher.state === "idle" && fetcher.data?.ok) {
@@ -99,8 +120,14 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
       } else if (rejectId !== null) {
         toast.success("采购单已驳回");
         setRejectId(null);
-      } else {
+      } else if (approveId !== null) {
         toast.success("采购单已审批");
+        setApproveId(null);
+      } else if (receiveId !== null) {
+        toast.success("入库成功，库存已更新");
+        setReceiveId(null);
+      } else {
+        toast.success("操作成功");
       }
     }
   }, [fetcher.state, fetcher.data]);
@@ -116,7 +143,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={loaderData.routePermissions}
       description="管理采购订单"
     >
       {isLoading ? <PageSkeleton columns={3} rows={6} /> : (
@@ -200,6 +227,34 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
                   )}
                 </div>
 
+                {/* Status hint */}
+                <div className="mb-2">
+                  {p.status === "pending" && (
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      等待审批
+                    </span>
+                  )}
+                  {p.status === "approved" && (
+                    <span className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      <ArrowDownToLine className="w-3 h-3" />
+                      审批通过，可执行入库
+                    </span>
+                  )}
+                  {p.status === "received" && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      已完成入库
+                    </span>
+                  )}
+                  {p.status === "rejected" && (
+                    <span className="text-[11px] text-red-500 dark:text-red-400">已驳回</span>
+                  )}
+                  {p.status === "cancelled" && (
+                    <span className="text-[11px] text-slate-400">已取消</span>
+                  )}
+                </div>
+
                 {/* Footer */}
                 <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -207,39 +262,31 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
                     <span>{new Date(p.createdAt).toLocaleDateString("zh-CN")}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Link to={`/purchases/${p.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-7 px-2")}>
-                      <Eye className="size-3.5" />
+                    <Link to={`/purchases/${p.id}`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-7 px-2 text-xs")}>
+                      <Eye className="size-3.5" /> 详情
                     </Link>
 
                     {p.status === "pending" && user.role === "admin" && (
-                      <fetcher.Form method="post" className="inline">
-                        <input type="hidden" name="intent" value="approve" />
-                        <input type="hidden" name="id" value={p.id} />
-                        <Button variant="ghost" size="sm" type="submit" className="h-7 px-2 text-emerald-600 hover:text-emerald-600">
-                          <CheckCircle className="size-3.5" />
-                        </Button>
-                      </fetcher.Form>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-600" onClick={() => setApproveId(p.id)}>
+                        <CheckCircle className="size-3.5" /> 审批
+                      </Button>
                     )}
 
                     {p.status === "pending" && user.role === "admin" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-red-500 hover:text-red-600"
-                        onClick={() => setRejectId(p.id)}
-                      >
-                        <Ban className="size-3.5" />
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-red-500 hover:text-red-600" onClick={() => setRejectId(p.id)}>
+                        <Ban className="size-3.5" /> 驳回
+                      </Button>
+                    )}
+
+                    {p.status === "approved" && (user.role === "admin" || user.role === "inventory_keeper") && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-600" onClick={() => setReceiveId(p.id)}>
+                        <ArrowDownToLine className="size-3.5" /> 入库
                       </Button>
                     )}
 
                     {p.status === "pending" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-destructive hover:text-destructive"
-                        onClick={() => setCancelId(p.id)}
-                      >
-                        <XCircle className="size-3.5" />
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={() => setCancelId(p.id)}>
+                        <XCircle className="size-3.5" /> 取消
                       </Button>
                     )}
                   </div>
@@ -253,10 +300,27 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
       )}
 
       <ConfirmDialog
+        open={approveId !== null}
+        onOpenChange={(open) => { if (!open) setApproveId(null); }}
+        title="审批采购单"
+        description={`确定审批通过采购单 PO-${approveId !== null ? String(approveId).padStart(4, "0") : ""}？审批后可执行入库操作。`}
+        confirmText="审批通过"
+        variant="default"
+        loading={isCancelling}
+        onConfirm={() => {
+          if (approveId === null) return;
+          const fd = new FormData();
+          fd.set("intent", "approve");
+          fd.set("id", String(approveId));
+          fetcher.submit(fd, { method: "post" });
+        }}
+      />
+
+      <ConfirmDialog
         open={rejectId !== null}
         onOpenChange={(open) => { if (!open) setRejectId(null); }}
         title="驳回采购单"
-        description="确定要驳回该采购单吗？驳回后需重新创建。"
+        description={`确定要驳回采购单 PO-${rejectId !== null ? String(rejectId).padStart(4, "0") : ""}？驳回后需重新创建。`}
         confirmText="驳回"
         loading={isCancelling}
         onConfirm={() => {
@@ -280,6 +344,23 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
           const fd = new FormData();
           fd.set("intent", "cancel");
           fd.set("id", String(cancelId));
+          fetcher.submit(fd, { method: "post" });
+        }}
+      />
+
+      <ConfirmDialog
+        open={receiveId !== null}
+        onOpenChange={(open) => { if (!open) setReceiveId(null); }}
+        title="确认入库"
+        description={`将为采购单 PO-${receiveId !== null ? String(receiveId).padStart(4, "0") : ""} 执行入库操作，库存数量将相应增加。`}
+        confirmText="确认入库"
+        variant="default"
+        loading={isCancelling}
+        onConfirm={() => {
+          if (receiveId === null) return;
+          const fd = new FormData();
+          fd.set("intent", "receive");
+          fd.set("id", String(receiveId));
           fetcher.submit(fd, { method: "post" });
         }}
       />

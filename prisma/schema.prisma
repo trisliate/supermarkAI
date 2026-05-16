@@ -166,10 +166,15 @@ model InventoryLog {
 }
 
 model SaleOrder {
-  id          Int      @id @default(autoincrement())
-  userId      Int      // 营业员
-  totalAmount Decimal  @db.Decimal(10, 2) @default(0)
-  createdAt   DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  userId         Int      // 营业员
+  totalAmount    Decimal  @db.Decimal(10, 2) @default(0)
+  paymentMethod  String   @default("cash")   // cash | wechat | alipay
+  paymentStatus  String   @default("paid")   // pending | paid | failed | refunded
+  paidAmount     Decimal? @db.Decimal(10, 2)
+  changeAmount   Decimal? @db.Decimal(10, 2)
+  transactionId  String?  // 第三方支付流水号
+  createdAt      DateTime @default(now())
 
   user  User            @relation(fields: [userId], references: [id])
   items SaleOrderItem[]
@@ -215,6 +220,11 @@ model AIConfig {
   protocol     String   @default("openai") // openai | anthropic
   isActive     Boolean  @default(false)
   systemPrompt String?  @db.Text
+  enableThinking Boolean @default(false) // 是否启用深度思考
+  temperature  Float?   @default(0.7)    // 温度参数
+  maxTokens    Int?     @default(4096)   // 最大 token 数
+  topP         Float?   @default(0.9)    // Top-P 采样
+  enableTools  Boolean  @default(true)   // 是否启用工具调用
   lastTestedAt DateTime?
   lastTestMs   Int?
   lastTestOk   Boolean?
@@ -262,4 +272,28 @@ model ChatMessage {
   createdAt    DateTime @default(now())
 
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model RoutePermission {
+  id        Int      @id @default(autoincrement())
+  route     String   @unique @db.VarChar(100) // e.g. "/products"
+  label     String   @db.VarChar(100)         // e.g. "商品管理"
+  group     String   @default("") @db.VarChar(50) // e.g. "运营管理"
+  roles     String   @default("") @db.VarChar(200) // comma-separated: "admin,purchaser"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentConfig {
+  id        Int      @id @default(autoincrement())
+  provider  String   @unique // wechat | alipay
+  appId     String?  @db.VarChar(100)
+  mchId     String?  @db.VarChar(100)  // 微信商户号
+  apiKey    String?  // 加密存储的 API 密钥/证书密码
+  certData  String?  @db.Text // PEM 证书内容（加密）
+  notifyUrl String?  @db.VarChar(500)
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

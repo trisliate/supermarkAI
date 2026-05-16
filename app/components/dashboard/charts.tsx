@@ -15,14 +15,15 @@ interface ChartsProps {
 }
 
 const muted = "#94a3b8";
+const gridStroke = "#e2e8f0";
 
-const PIE_COLORS = ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#6366f1", "#14b8a6"];
+const PIE_COLORS = ["#60a5fa", "#22d3ee", "#34d399", "#fbbf24", "#f87171", "#f472b6", "#818cf8", "#2dd4bf"];
 
 const STATUS_COLORS: Record<string, string> = {
-  "缺货": "#ef4444",
-  "偏低": "#f59e0b",
-  "正常": "#10b981",
-  "充足": "#3b82f6",
+  "缺货": "#f87171",
+  "偏低": "#fbbf24",
+  "正常": "#34d399",
+  "充足": "#60a5fa",
 };
 
 function MiniTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ color?: string; value?: number; dataKey?: string }>; label?: string }) {
@@ -47,13 +48,13 @@ function ChartCard({ title, icon: Icon, children, value, subtitle, className }: 
   title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; value?: string; subtitle?: string; className?: string;
 }) {
   return (
-    <div className={`bg-gradient-to-br from-white to-slate-50/80 dark:from-slate-900 dark:to-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-5 ${className || ""}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 ${className || ""}`}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
             <Icon className="w-4 h-4 text-primary" />
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</span>
         </div>
         {value && (
           <div className="text-right">
@@ -169,7 +170,7 @@ function HorizontalStatusBar({ data }: { data: Record<string, number> }) {
 /** Radial gauge showing today revenue vs target */
 export function RadialGauge({ todayAmount, targetAmount }: { todayAmount: number; targetAmount: number }) {
   const pct = targetAmount > 0 ? Math.min(Math.round((todayAmount / targetAmount) * 100), 100) : 0;
-  const gaugeData = [{ name: "达成率", value: pct, fill: pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444" }];
+  const gaugeData = [{ name: "达成率", value: pct, fill: pct >= 80 ? "#34d399" : pct >= 50 ? "#fbbf24" : "#f87171" }];
 
   return (
     <div className="flex items-center gap-4">
@@ -220,7 +221,7 @@ export function BarChartCard({ data, title }: { data: Array<{ name: string; valu
       <div style={{ width: "100%", height: 220 }}>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} barSize={28}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
             <Tooltip
@@ -322,15 +323,15 @@ export function Charts({ trendData, pieData, inventoryStatus, todayAmount, targe
               <AreaChart data={trendData}>
                 <defs>
                   <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="purchaseGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.1} />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
                 <Tooltip content={<MiniTooltip />} />
@@ -388,7 +389,7 @@ export function Charts({ trendData, pieData, inventoryStatus, todayAmount, targe
           <div style={{ width: "100%", height: 200 }}>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={weeklyData} barSize={20}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: muted }} axisLine={false} tickLine={false} width={50} />
                 <Tooltip

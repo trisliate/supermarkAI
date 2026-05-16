@@ -19,11 +19,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Plus, Pencil, Trash2, Truck, Search, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
-
-const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "~/lib/constants";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, suppliers, products, supplierProducts] = await Promise.all([
@@ -45,7 +46,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     bindingMap[sp.supplierId].push(sp.productId);
   }
 
-  return { user, suppliers, products, bindingMap, total, page, pageSize: PAGE_SIZE };
+  return { user, suppliers, products, bindingMap, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -154,7 +155,7 @@ export default function SuppliersPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={loaderData.routePermissions}
       description="管理供应商信息"
     >
       {isLoading ? <PageSkeleton columns={7} rows={6} /> : (

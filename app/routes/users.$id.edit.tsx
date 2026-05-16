@@ -18,9 +18,11 @@ import type { Role } from "@prisma/client";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const editUser = await db.user.findUnique({ where: { id: Number(params.id) } });
   if (!editUser) throw new Response("用户不存在", { status: 404 });
-  return { user, editUser };
+  return { user, editUser, routePermissions };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -45,7 +47,7 @@ export default function EditUserPage({ loaderData }: Route.ComponentProps) {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={loaderData.routePermissions}>
       <FormPage
         icon={UserCog}
         title="编辑用户"

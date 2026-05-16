@@ -15,7 +15,9 @@ import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
-  return { user };
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
+  return { user, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -33,13 +35,13 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function NewSupplierPage() {
-  const { user } = useLoaderData<typeof loader>();
+  const { user, routePermissions } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={routePermissions}>
       <FormPage
         icon={Truck}
         title="新增供应商"

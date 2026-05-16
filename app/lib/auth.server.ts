@@ -44,6 +44,17 @@ export async function requireRole(request: Request, roles: Role[]): Promise<Auth
   return user;
 }
 
+/** Check access based on dynamic RoutePermission in DB. Falls back to default config if not in DB. */
+export async function requireRouteAccess(request: Request, route: string): Promise<AuthUser> {
+  const { canAccessRoute } = await import("~/lib/permissions.server");
+  const user = await requireUser(request);
+  const allowed = await canAccessRoute(route, user.role);
+  if (!allowed) {
+    throw new Response("权限不足", { status: 403 });
+  }
+  return user;
+}
+
 export async function createUserSession(userId: number, redirectTo: string) {
   const session = await getSession(new Request("http://localhost"));
   session.set("userId", userId);

@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router";
 import type { AuthUser } from "~/lib/auth";
 import {
   LayoutDashboard, Users, Package, Tags, Truck,
-  ShoppingCart, Warehouse, Receipt, Store, KeyRound, Bell,
+  ShoppingCart, Warehouse, Receipt, Store, KeyRound, Bell, CreditCard, ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -29,7 +29,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navGroups: NavGroup[] = [
+const DEFAULT_NAV: NavGroup[] = [
   {
     items: [
       { label: "经营总览", href: "/dashboard", roles: ["admin", "purchaser", "inventory_keeper", "cashier"], icon: LayoutDashboard },
@@ -46,8 +46,8 @@ const navGroups: NavGroup[] = [
   {
     label: "供应链",
     items: [
-      { label: "采购管理", href: "/purchases", roles: ["admin", "purchaser"], icon: ShoppingCart },
-      { label: "库存管理", href: "/inventory", roles: ["admin", "inventory_keeper"], icon: Warehouse },
+      { label: "采购管理", href: "/purchases", roles: ["admin", "purchaser", "inventory_keeper"], icon: ShoppingCart },
+      { label: "库存管理", href: "/inventory", roles: ["admin", "inventory_keeper", "cashier"], icon: Warehouse },
     ],
   },
   {
@@ -62,16 +62,33 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "用户管理", href: "/users", roles: ["admin"], icon: Users },
       { label: "通知管理", href: "/notifications", roles: ["admin"], icon: Bell },
+      { label: "权限配置", href: "/settings/permissions", roles: ["admin"], icon: ShieldCheck },
       { label: "API Key", href: "/settings/ai", roles: ["admin"], icon: KeyRound },
+      { label: "支付配置", href: "/settings/payment", roles: ["admin"], icon: CreditCard },
     ],
   },
 ];
 
-export function AppSidebar({ user }: { user: AuthUser }) {
+interface AppSidebarProps {
+  user: AuthUser;
+  /** Route permissions from DB: route -> allowed roles. Overrides hardcoded defaults. */
+  routePermissions?: Record<string, string[]>;
+}
+
+export function AppSidebar({ user, routePermissions }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
   const isActive = (href: string) => location.pathname === href;
+
+  // Build nav groups, using dynamic permissions when available
+  const navGroups: NavGroup[] = DEFAULT_NAV.map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({
+      ...item,
+      roles: routePermissions?.[item.href] ?? item.roles,
+    })),
+  }));
 
   return (
     <ShadSidebar

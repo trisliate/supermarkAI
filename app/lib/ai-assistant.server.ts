@@ -101,6 +101,7 @@ const toolMeta: Record<string, { requiredRoles?: Role[]; writeOperation?: boolea
     writeOperation: true,
     fields: [
       { key: "items", label: "商品列表（JSON格式）", type: "text", required: true },
+      { key: "paymentMethod", label: "支付方式", type: "select", options: ["cash", "wechat", "alipay"] },
     ],
   },
   get_hot_selling_products: {},
@@ -302,7 +303,7 @@ const tools = [
     type: "function",
     function: {
       name: "create_sale",
-      description: "创建销售订单（开单，需要确认）。items格式：[{productName, quantity}]",
+      description: "创建销售订单（开单，需要确认）。items格式：[{productName, quantity}]，paymentMethod可选：cash(现金), wechat(微信), alipay(支付宝)",
       parameters: {
         type: "object",
         properties: {
@@ -318,6 +319,7 @@ const tools = [
               required: ["productName", "quantity"],
             },
           },
+          paymentMethod: { type: "string", description: "支付方式：cash(现金), wechat(微信支付), alipay(支付宝)，默认cash" },
         },
         required: ["items"],
       },
@@ -685,10 +687,17 @@ async function executeTool(name: string, args: Record<string, unknown>, user?: A
       }
 
       const totalAmount = saleItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+      const payMethod = (args.paymentMethod as string) || "cash";
 
       await db.$transaction(async (tx) => {
         const order = await tx.saleOrder.create({
-          data: { userId, totalAmount, items: { create: saleItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })) } },
+          data: {
+            userId,
+            totalAmount,
+            paymentMethod: payMethod,
+            paymentStatus: payMethod === "cash" ? "paid" : "pending",
+            items: { create: saleItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })) },
+          },
         });
         for (const item of saleItems) {
           await tx.inventory.update({
@@ -974,7 +983,7 @@ async function buildSystemPrompt(): Promise<string> {
 - create_supplier: 创建新供应商（name, contact, phone, address）
 - create_category: 创建新分类（name, description）
 - adjust_inventory: 调整库存（productName, quantity, type=IN/OUT, reason）
-- create_sale: 创建销售订单/开单（items: [{productName, quantity}]）
+- create_sale: 创建销售订单/开单（items: [{productName, quantity}], paymentMethod: cash|wechat|alipay）
 
 ## 使用规则：
 1. 用户询问数据时，**必须调用对应工具**获取实时数据，绝对不要编造数字
@@ -995,7 +1004,7 @@ async function buildSystemPrompt(): Promise<string> {
 - 涉及操作时给出具体的导航指引`;
 }
 
-async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[]; reasoningContent?: string }> {
+async function callLLM(config: { provider: string; model: string; apiKey: string; baseUrl: string | null; protocol?: string; temperature?: number | null; maxTokens?: number | null; topP?: number | null; enableThinking?: boolean; enableTools?: boolean }, messages: ChatMessage[]): Promise<{ content: string; toolCalls?: LLMToolCall[]; reasoningContent?: string }> {
   const url = config.baseUrl || providerBaseUrls[config.provider] || "";
   const decryptedKey = decrypt(config.apiKey);
   const protocol = config.protocol || "openai";
@@ -1037,12 +1046,12 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
       },
       body: JSON.stringify({
         model: config.model,
-        max_tokens: 1024,
-        temperature: 0.7,
+        max_tokens: config.maxTokens || 4096,
+        temperature: config.temperature ?? 0.7,
         system: systemMsg?.content || undefined,
         messages: anthropicMessages,
-        tools: toAnthropicTools(),
-        tool_choice: { type: "auto" },
+        tools: config.enableTools !== false ? toAnthropicTools() : undefined,
+        tool_choice: config.enableTools !== false ? { type: "auto" } : undefined,
       }),
     });
 
@@ -1075,11 +1084,13 @@ async function callLLM(config: { provider: string; model: string; apiKey: string
     body: JSON.stringify({
       model: config.model,
       messages,
-      tools: tools.length > 0 ? tools : undefined,
-      tool_choice: "auto",
-      max_tokens: 1024,
-      temperature: 0.7,
-      ...(config.provider === "doubao" ? { thinking: { type: "disabled" } } : {}),
+      tools: config.enableTools !== false && tools.length > 0 ? tools : undefined,
+      tool_choice: config.enableTools !== false ? "auto" : undefined,
+      max_tokens: config.maxTokens || 4096,
+      temperature: config.temperature ?? 0.7,
+      top_p: config.topP ?? 0.9,
+      ...(config.provider === "doubao" ? { thinking: { type: config.enableThinking ? "enabled" : "disabled" } } : {}),
+      ...(config.enableThinking && config.provider === "mimo" ? { thinking: { type: "enabled" } } : {}),
     }),
   });
 
@@ -1158,6 +1169,7 @@ export async function executeConfirmedTool(toolName: string, toolArgs: Record<st
     create_supplier: "/suppliers",
     create_category: "/categories",
     adjust_inventory: "/inventory",
+    create_sale: "/sales",
   };
 
   const navigateTo = navAfterWrite[toolName];
@@ -1255,6 +1267,60 @@ async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, 
 // Keyword matching fallback (original logic)
 async function processWithKeywords(input: string): Promise<AssistantResponse> {
   const q = input.trim().toLowerCase();
+
+  // Sell/create sale order (keyword fallback)
+  if (q.includes("卖") && (q.includes("个") || q.includes("袋") || q.includes("瓶") || q.includes("箱") || q.includes("包") || q.includes("件") || q.match(/\d+/))) {
+    // Extract quantity and product name
+    const sellMatch = q.match(/(?:帮我)?(?:卖|卖出|销售)(?:了?)(\d+)?\s*(?:个|袋|瓶|箱|包|件|桶|罐)?(.+)/);
+    if (sellMatch) {
+      const qty = parseInt(sellMatch[1] || "1");
+      const productName = (sellMatch[2] || "").trim().replace(/(吧|吗|的|啊)$/g, "");
+      if (productName) {
+        const products = await db.product.findMany({
+          where: { name: { contains: productName }, status: "active" },
+          include: { inventory: true },
+          take: 5,
+        });
+        if (products.length === 1) {
+          const p = products[0];
+          const stock = p.inventory?.quantity ?? 0;
+          if (stock < qty) {
+            return { type: "text", title: "库存不足", content: `${p.name} 库存不足：当前 ${stock}${p.unit}，需要 ${qty}${p.unit}` };
+          }
+          return {
+            type: "confirm",
+            title: "销售开单",
+            content: `确认销售 ${p.name} x${qty}，单价 ¥${formatPrice(Number(p.price))}，合计 ¥${formatPrice(qty * Number(p.price))}？`,
+            needsConfirmation: true,
+            toolName: "create_sale",
+            toolArgs: { items: [{ productName: p.name, quantity: qty }], paymentMethod: "cash" },
+          };
+        }
+        if (products.length > 1) {
+          return {
+            type: "table",
+            title: "找到多个商品",
+            content: `找到 ${products.length} 个匹配"${productName}"的商品，请明确商品名称：`,
+            data: products.map((p) => ({ 商品: p.name, 库存: `${p.inventory?.quantity ?? 0}${p.unit}`, 价格: `¥${formatPrice(Number(p.price))}` })),
+          };
+        }
+        return { type: "text", title: "商品未找到", content: `未找到包含"${productName}"的商品，请检查商品名称。` };
+      }
+    }
+    // Generic sell request
+    const recentProducts = await db.product.findMany({
+      where: { status: "active" },
+      include: { inventory: true },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    });
+    return {
+      type: "list",
+      title: "选择商品",
+      content: `请告诉我具体要卖什么商品，例如"卖5瓶可口可乐"。以下是最近的商品：`,
+      data: recentProducts.map((p) => ({ 商品: p.name, 库存: `${p.inventory?.quantity ?? 0}${p.unit}`, 价格: `¥${formatPrice(Number(p.price))}` })),
+    };
+  }
 
   if (q.includes("缺货") || q.includes("没货") || q.includes("无货")) {
     const items = await db.inventory.findMany({
@@ -1376,12 +1442,13 @@ async function processWithKeywords(input: string): Promise<AssistantResponse> {
   if (q.includes("帮助") || q.includes("help") || q.includes("功能") || q.includes("能做什么")) {
     return {
       type: "text", title: "帮助",
-      content: `我是超市智能助手，可以帮你查询：
+      content: `我是超市智能助手，可以帮你查询和操作：
 
 · "XX商品还有多少？" — 查询库存
 · "哪些商品缺货了？" — 缺货列表
 · "今天卖了多少？" — 今日销售
 · "什么卖得好？" — 热销排行
+· "卖5瓶可口可乐" — 销售开单
 · "采购花了多少？" — 采购金额
 · "供应商电话" — 供应商信息
 · "商品有多少个？" — 商品统计

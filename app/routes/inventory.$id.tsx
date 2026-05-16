@@ -16,6 +16,8 @@ import { toast } from "sonner";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "inventory_keeper"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const inventory = await db.inventory.findUnique({
     where: { id: Number(params.id) },
     include: { product: { include: { category: true } } },
@@ -33,7 +35,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ...inventory,
     product: { ...inventory.product, price: Number(inventory.product.price) },
   };
-  return { user, inventory: serializedInventory, recentLogs };
+  return { user, inventory: serializedInventory, recentLogs, routePermissions };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -72,7 +74,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function InventoryDetailPage() {
-  const { user, inventory, recentLogs } = useLoaderData<typeof loader>();
+  const { user, inventory, recentLogs, routePermissions } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -94,7 +96,7 @@ export default function InventoryDetailPage() {
   const isOut = stock === 0;
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={routePermissions}>
       <div className="max-w-3xl animate-fade-in">
         <div className="flex items-center gap-3 mb-5">
           <Link to="/inventory" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "h-8 w-8 p-0")}>

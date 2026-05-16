@@ -8,16 +8,19 @@ import { AppLayout } from "~/components/layout/app-layout";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "~/components/ui/dialog";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
 import { Plus, Trash2, Tags, Loader2, Search, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
-
-const PAGE_SIZE = 20;
+import { PAGE_SIZE } from "~/lib/constants";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, categories] = await Promise.all([
@@ -29,7 +32,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       take: PAGE_SIZE,
     }),
   ]);
-  return { user, categories, total, page, pageSize: PAGE_SIZE };
+  return { user, categories, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -55,7 +58,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function CategoriesPage() {
-  const { user, categories, total, page, pageSize } = useLoaderData<typeof loader>();
+  const { user, categories, total, page, pageSize, routePermissions } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
@@ -89,7 +92,7 @@ export default function CategoriesPage() {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={routePermissions}
       description={`共 ${total} 个分类`}
     >
       {isLoading ? <PageSkeleton columns={5} rows={6} /> : (
@@ -110,30 +113,35 @@ export default function CategoriesPage() {
         </div>
         </div>
 
-        {/* Add form */}
-        {showAdd && (
-          <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-4">
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">新增分类</h3>
-            <fetcher.Form method="post" className="flex gap-3 items-end">
+        {/* Add Category Dialog */}
+        <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setShowAdd(false); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Plus className="size-4" /> 新增分类
+              </DialogTitle>
+              <DialogDescription>添加新的商品分类</DialogDescription>
+            </DialogHeader>
+            <fetcher.Form method="post" className="space-y-4">
               <input type="hidden" name="intent" value="create" />
-              <div className="flex-1 space-y-1.5">
-                <Label className="text-xs">分类名称</Label>
-                <Input name="name" required placeholder="请输入分类名称" />
+              <div className="space-y-1.5">
+                <Label htmlFor="cat-name">分类名称 <span className="text-red-500">*</span></Label>
+                <Input id="cat-name" name="name" required placeholder="请输入分类名称" />
               </div>
-              <div className="flex-1 space-y-1.5">
-                <Label className="text-xs">描述</Label>
-                <Input name="description" placeholder="可选描述" />
+              <div className="space-y-1.5">
+                <Label htmlFor="cat-desc">描述 <span className="text-muted-foreground font-normal">(可选)</span></Label>
+                <Textarea id="cat-desc" name="description" rows={2} placeholder="分类描述" className="text-sm" />
               </div>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
-                添加
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setShowAdd(false)}>
-                取消
-              </Button>
+              <div className="flex gap-3 pt-2">
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+                  {isSubmitting ? "添加中..." : "添加分类"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowAdd(false)}>取消</Button>
+              </div>
             </fetcher.Form>
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
 
         {/* Category grid */}
         {filtered.length === 0 ? (

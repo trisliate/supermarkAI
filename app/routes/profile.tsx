@@ -10,7 +10,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Badge } from "~/components/ui/badge";
 import { AvatarUpload } from "~/components/ui/avatar-upload";
-import { User, Lock, Loader2, CheckCircle, ShoppingCart, Receipt, Activity, Shield, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { User, Lock, Loader2, CheckCircle, ShoppingCart, Receipt, Shield, Activity } from "lucide-react";
 import { FormPage } from "~/components/ui/form-page";
 import { FormSection } from "~/components/ui/form-section";
 import { toast } from "sonner";
@@ -25,6 +25,8 @@ const roleColors: Record<string, string> = {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const fullUser = await db.user.findUnique({
     where: { id: user.id },
     select: { id: true, username: true, name: true, role: true, createdAt: true, avatar: true },
@@ -50,6 +52,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     fullUser: fullUser ? { ...fullUser, hasAvatar: fullUser.avatar !== null } : null,
     stats: { purchaseCount, salesCount, monthlyOps },
     recentLogs,
+    routePermissions,
   };
 }
 
@@ -158,7 +161,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={loaderData.routePermissions}>
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* Top: Profile + Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import type { Route } from "./+types/settings.ai";
 import { requireRole } from "~/lib/auth.server";
 import { db } from "~/lib/db.server";
-import { encrypt, decrypt } from "~/lib/crypto.server";
 import { AppLayout } from "~/components/layout/app-layout";
 
 import { Button } from "~/components/ui/button";
@@ -87,6 +86,8 @@ const providers: ProviderDef[] = [
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const configs = await db.aIConfig.findMany({ orderBy: { createdAt: "desc" } });
   const masked = configs.map((c) => ({
     ...c,
@@ -95,7 +96,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     lastTestMs: c.lastTestMs,
     lastTestOk: c.lastTestOk,
   }));
-  return { user, configs: masked };
+  return { user, configs: masked, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -117,15 +118,16 @@ export async function action({ request }: Route.ActionArgs) {
     }
 
     let apiKey: string;
+    const { encrypt: enc } = await import("~/lib/crypto.server");
     if (apiKeyRaw.startsWith("••••••••")) {
       if (!id) return { error: "请输入 API Key" };
       const existing = await db.aIConfig.findUnique({ where: { id } });
       if (!existing) return { error: "配置不存在" };
       // Re-encrypt if stored key is plain text (not in iv:tag:ciphertext format)
       const isEncrypted = existing.apiKey.split(":").length === 3 && existing.apiKey.split(":").every((p: string) => /^[0-9a-f]+$/i.test(p));
-      apiKey = isEncrypted ? existing.apiKey : encrypt(existing.apiKey);
+      apiKey = isEncrypted ? existing.apiKey : enc(existing.apiKey);
     } else {
-      apiKey = encrypt(apiKeyRaw);
+      apiKey = enc(apiKeyRaw);
     }
 
     if (id) {
@@ -165,6 +167,7 @@ export async function action({ request }: Route.ActionArgs) {
     const protocol = config.protocol || pDef?.defaultProtocol || "openai";
 
     try {
+      const { decrypt } = await import("~/lib/crypto.server");
       const decryptedKey = decrypt(config.apiKey);
       const baseUrl = config.baseUrl || pDef?.baseUrl || "";
       const start = Date.now();
@@ -324,7 +327,7 @@ export default function SettingsAIPage({ loaderData }: Route.ComponentProps) {
   }
 
   return (
-    <AppLayout user={user} description="配置 AI 模型供应商和 API Key">
+    <AppLayout user={user} routePermissions={loaderData.routePermissions} description="配置 AI 模型供应商和 API Key">
     <div className="animate-fade-in flex flex-col">
 
       {/* Top: provider cards */}

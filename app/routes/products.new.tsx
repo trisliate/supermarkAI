@@ -17,8 +17,10 @@ import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const categories = await db.category.findMany({ orderBy: { name: "asc" } });
-  return { user, categories };
+  return { user, categories, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -32,6 +34,9 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (!name || !categoryId || !price || !unit) {
     return { error: "必填字段不能为空" };
+  }
+  if (!formData.get("shelfLifeDays") || !formData.get("productionDate")) {
+    return { error: "保质期和生产日期为必填项" };
   }
 
   const product = await db.product.create({
@@ -48,13 +53,13 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function NewProductPage() {
-  const { user, categories } = useLoaderData<typeof loader>();
+  const { user, categories, routePermissions } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={routePermissions}>
       <FormPage
         icon={PackagePlus}
         title="新增商品"
@@ -102,12 +107,12 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" placeholder="如 365" />
+                <Label htmlFor="shelfLifeDays">保质期（天）<span className="text-red-500">*</span></Label>
+                <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min="1" required placeholder="如 365" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="productionDate">生产日期<span className="text-muted-foreground font-normal">(可选)</span></Label>
-                <Input id="productionDate" name="productionDate" type="date" />
+                <Label htmlFor="productionDate">生产日期<span className="text-red-500">*</span></Label>
+                <Input id="productionDate" name="productionDate" type="date" required className="h-10" />
               </div>
             </div>
 

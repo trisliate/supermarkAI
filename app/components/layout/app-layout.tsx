@@ -14,9 +14,11 @@ interface AppLayoutProps {
   backTo?: string;
   backLabel?: string;
   actions?: React.ReactNode;
+  /** Route permissions from DB: route -> allowed roles */
+  routePermissions?: Record<string, string[]>;
 }
 
-export function AppLayout({ user, children, description, backTo, backLabel, actions }: AppLayoutProps) {
+export function AppLayout({ user, children, description, backTo, backLabel, actions, routePermissions }: AppLayoutProps) {
   useFlashToast();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -36,14 +38,14 @@ export function AppLayout({ user, children, description, backTo, backLabel, acti
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={setSidebarOpen}>
-      <AppSidebar user={user} />
+      <AppSidebar user={user} routePermissions={routePermissions} />
       <SidebarInset className="bg-slate-50 dark:bg-slate-950">
         <Header user={user} catEnabled={catEnabled} onToggleCat={toggleCat} onOpenChat={() => setChatOpen(true)} description={description} backTo={backTo} backLabel={backLabel} actions={actions} />
         <div className="flex-1 px-8 py-6 pb-12 min-h-0">{children}</div>
       </SidebarInset>
 
       {catEnabled && <FloatingCat />}
-      <ChatWidget isOpen={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} />
+      <ChatWidget isOpen={chatOpen} onOpen={() => setChatOpen(true)} onClose={() => setChatOpen(false)} user={user} />
     </SidebarProvider>
   );
 }

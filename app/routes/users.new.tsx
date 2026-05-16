@@ -19,7 +19,9 @@ import type { Role } from "@prisma/client";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin"]);
-  return { user };
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
+  return { user, routePermissions };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -50,7 +52,7 @@ export default function NewUserPage({ loaderData }: Route.ComponentProps) {
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={loaderData.routePermissions}>
       <FormPage
         icon={UserPlus}
         title="新增用户"

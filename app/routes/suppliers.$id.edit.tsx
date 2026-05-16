@@ -15,9 +15,11 @@ import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "purchaser"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const supplier = await db.supplier.findUnique({ where: { id: Number(params.id) } });
   if (!supplier) throw new Response("供应商不存在", { status: 404 });
-  return { user, supplier };
+  return { user, supplier, routePermissions };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -41,12 +43,12 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function EditSupplierPage() {
-  const { user, supplier } = useLoaderData<typeof loader>();
+  const { user, supplier, routePermissions } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   return (
-    <AppLayout user={user}>
+    <AppLayout user={user} routePermissions={routePermissions}>
       <FormPage
         icon={Pencil}
         title="编辑供应商"

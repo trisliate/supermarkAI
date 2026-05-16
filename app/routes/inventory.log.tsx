@@ -16,12 +16,14 @@ import { ArrowLeft, History, ArrowDownToLine, ArrowUpFromLine, Search } from "lu
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireRole(request, ["admin", "inventory_keeper"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const logs = await db.inventoryLog.findMany({
     include: { product: true, user: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  return { user, logs };
+  return { user, logs, routePermissions };
 }
 
 export default function InventoryLogPage({ loaderData }: Route.ComponentProps) {
@@ -39,7 +41,7 @@ export default function InventoryLogPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={loaderData.routePermissions}
       description="最近 100 条出入库操作记录"
     >
       <div className="space-y-4 animate-fade-in">

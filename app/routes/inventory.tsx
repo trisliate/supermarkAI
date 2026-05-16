@@ -17,14 +17,15 @@ import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "~/components/ui/sheet";
-import { Settings, Warehouse, History, Package, DollarSign, AlertTriangle, CheckCircle, Loader2, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Settings, Warehouse, History, Package, DollarSign, AlertTriangle, Loader2, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
+import { PAGE_SIZE } from "~/lib/constants";
 import { toast } from "sonner";
 
-const PAGE_SIZE = 20;
-
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireRole(request, ["admin", "inventory_keeper", "purchaser"]);
+  const user = await requireRole(request, ["admin", "inventory_keeper", "cashier"]);
+  const { loadRoutePermissions } = await import("~/lib/permissions.server");
+  const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const [total, inventories] = await Promise.all([
@@ -40,7 +41,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     ...inv,
     product: { ...inv.product, price: Number(inv.product.price) },
   }));
-  return { user, inventories: serializedInventories, total, page, pageSize: PAGE_SIZE };
+  return { user, inventories: serializedInventories, total, page, pageSize: PAGE_SIZE, routePermissions };
 }
 
 export default function InventoryPage({ loaderData }: Route.ComponentProps) {
@@ -97,7 +98,7 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout
-      user={user}
+      user={user} routePermissions={loaderData.routePermissions}
       description="查看和管理商品库存"
     >
       {isLoading ? <PageSkeleton columns={7} rows={6} /> : (

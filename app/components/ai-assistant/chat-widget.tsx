@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  X, Send, User, Loader2, Minus, Maximize2, Trash2, ExternalLink,
+  X, Send, Minus, Maximize2,
   Sparkles, CheckCircle, XCircle, ChevronDown, MessageSquare, Plus,
   Clock, Settings2, Bot, Menu, Zap, History, Cpu, ArrowRight,
   Search, BarChart3, HelpCircle, StopCircle,
@@ -77,9 +77,10 @@ interface ChatWidgetProps {
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  user: { id: number; name: string; hasAvatar: boolean };
 }
 
-export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
+export function ChatWidget({ isOpen, onOpen, onClose, user }: ChatWidgetProps) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -178,7 +179,6 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
         }));
         setMessages(msgs.length > 0 ? msgs : [{ id: 0, role: "assistant", content: "这是一个空对话。" }]);
         setCurrentSessionId(sid);
-        setSidebarOpen(false);
       }
     } catch { /* ignore */ }
   };
@@ -268,11 +268,11 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
         }));
       }
 
-      // Auto-navigate if type is navigate
+      // Auto-navigate if type is navigate (full reload to show fresh data)
       if (data.type === "navigate" && data.navigateTo) {
         setTimeout(() => {
-          navigate(data.navigateTo);
-        }, 1500);
+          window.location.href = data.navigateTo;
+        }, 1200);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -325,11 +325,18 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
       };
       setMessages((prev) => prev.map((m) => m.id === msg.id ? resultMsg : m));
 
-      // Auto-navigate after confirmed write operation
+      // Auto-navigate after confirmed write operation (full reload to show fresh data)
       if (data.navigateTo) {
+        const successMsg = data.content || "操作成功";
+        document.cookie = `flash-message=${encodeURIComponent(JSON.stringify({ type: "success", message: successMsg }))}; Path=/; Max-Age=10; SameSite=Lax`;
+        // Show navigating indicator in chat
+        const resultId = resultMsg.id;
+        setMessages((prev) => prev.map((m) =>
+          m.id === resultId ? { ...m, content: successMsg + "\n\n正在跳转...", navigateTo: undefined } : m
+        ));
         setTimeout(() => {
-          navigate(data.navigateTo);
-        }, 1500);
+          window.location.href = data.navigateTo;
+        }, 1200);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
@@ -795,8 +802,14 @@ export function ChatWidget({ isOpen, onOpen, onClose }: ChatWidgetProps) {
                     )}
                   </div>
                   {msg.role === "user" && (
-                    <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="w-4 h-4 text-slate-500" />
+                    <div className="w-7 h-7 rounded-full shrink-0 mt-0.5 overflow-hidden">
+                      {user.hasAvatar ? (
+                        <img src={`/api/avatar?userId=${user.id}`} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-900 text-xs font-bold">
+                          {user.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
