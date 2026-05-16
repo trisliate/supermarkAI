@@ -48,7 +48,7 @@ function ChartCard({ title, icon: Icon, children, value, subtitle, className }: 
   title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; value?: string; subtitle?: string; className?: string;
 }) {
   return (
-    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 ${className || ""}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 ${className || ""}`}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">

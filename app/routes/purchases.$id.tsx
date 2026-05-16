@@ -124,11 +124,11 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
 
   return (
     <AppLayout user={user} routePermissions={loaderData.routePermissions} backTo="/purchases" backLabel="返回采购列表" description="采购单详情">
-      <div className="max-w-3xl animate-fade-in">
+      <div className="max-w-4xl animate-fade-in">
 
         {/* Status Flow Bar */}
         {["pending", "approved", "received"].includes(purchase.status) && (
-          <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+          <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
             <div className="flex items-center justify-between">
               {[
                 { key: "pending", label: "待审批", icon: Clock },

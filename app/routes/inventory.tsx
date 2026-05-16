@@ -105,28 +105,28 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
       <div className="space-y-8 animate-fade-in">
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="w-4 h-4 text-blue-500" />
               <span className="text-xs text-slate-500">商品种类</span>
             </div>
             <p className="text-2xl font-bold">{counts.all}</p>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-red-200 dark:border-red-800/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-red-200 dark:border-red-800/50 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-red-500" />
               <span className="text-xs text-slate-500">缺货</span>
             </div>
             <p className="text-2xl font-bold text-red-600">{counts.out}</p>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800/50 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
               <span className="text-xs text-slate-500">库存偏低</span>
             </div>
             <p className="text-2xl font-bold text-amber-600">{counts.low}</p>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="w-4 h-4 text-emerald-500" />
               <span className="text-xs text-slate-500">库存总值</span>

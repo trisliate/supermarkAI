@@ -181,7 +181,7 @@ export default function PurchasesPage({ loaderData }: Route.ComponentProps) {
             {filtered.map((p) => (
               <div
                 key={p.id}
-                className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow group"
+                className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 hover:shadow-md transition-shadow group"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">

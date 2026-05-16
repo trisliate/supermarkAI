@@ -162,12 +162,12 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout user={user} routePermissions={loaderData.routePermissions}>
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Top: Profile + Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Profile card */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-4 mb-4">
                 <AvatarUpload
                   user={{ name: fullUser.name, hasAvatar: fullUser.hasAvatar, id: fullUser.id }}
@@ -189,7 +189,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
             </div>
 
             {/* Role permissions */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="w-4 h-4 text-blue-500" />
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{permInfo.title}</span>
@@ -206,7 +206,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
 
           {/* Right: Name edit + Password */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <User className="w-4 h-4 text-slate-500" />
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200">编辑资料</span>
@@ -224,7 +224,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
               </fetcher.Form>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Lock className="w-4 h-4 text-slate-500" />
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200">修改密码</span>
@@ -263,7 +263,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
 
         {/* Statistics cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
               <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
@@ -272,7 +272,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
               <p className="text-xs text-slate-500">我的采购单</p>
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
               <Receipt className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
@@ -281,7 +281,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
               <p className="text-xs text-slate-500">我的销售单</p>
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center shrink-0">
               <Activity className="w-5 h-5 text-violet-600 dark:text-violet-400" />
             </div>
@@ -293,7 +293,7 @@ export default function ProfilePage({ loaderData }: Route.ComponentProps) {
         </div>
 
         {/* Recent activity */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <Activity className="w-4 h-4 text-slate-500" />
             <span className="text-sm font-medium text-slate-800 dark:text-slate-200">最近操作记录</span>

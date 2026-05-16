@@ -145,7 +145,7 @@ export default function CategoriesPage() {
 
         {/* Category grid */}
         {filtered.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+          <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center">
             <FolderOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <p className="text-sm text-slate-500 dark:text-slate-400">{search ? "没有匹配的分类" : "暂无分类"}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{search ? "尝试其他关键词" : "点击上方按钮添加第一个分类"}</p>
@@ -155,7 +155,7 @@ export default function CategoriesPage() {
             {filtered.map((c) => (
               <div
                 key={c.id}
-                className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors group"
+                className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors group"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3 min-w-0">

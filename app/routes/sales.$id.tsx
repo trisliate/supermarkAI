@@ -133,10 +133,10 @@ export default function SaleDetailPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <AppLayout user={user} routePermissions={loaderData.routePermissions} backTo="/sales" backLabel="返回销售列表" description="订单详情">
-      <div className="max-w-3xl space-y-5 animate-fade-in">
+      <div className="max-w-4xl space-y-5 animate-fade-in">
         {/* Status flow */}
         {sale.paymentStatus === "paid" && (
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
             <div className="flex items-center justify-between">
               {[
                 { key: "pending", label: "下单", icon: Clock },

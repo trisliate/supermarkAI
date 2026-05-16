@@ -110,7 +110,7 @@ export default function InventoryDetailPage() {
           {/* Left: stock info + adjustment form */}
           <div className="space-y-4">
             {/* Current stock */}
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 mb-4">
                 <Package className="size-4 text-blue-500" />
                 库存信息
@@ -130,7 +130,7 @@ export default function InventoryDetailPage() {
             </div>
 
             {/* Adjustment form */}
-            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5">
+            <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm p-5">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 mb-4">
                 <Settings className="size-4 text-blue-500" />
                 出入库操作
@@ -165,7 +165,7 @@ export default function InventoryDetailPage() {
           </div>
 
           {/* Right: recent logs */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-5">
+          <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm p-5">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">操作记录</span>
             <div className="mt-3 max-h-[420px] overflow-y-auto">
               <Table>

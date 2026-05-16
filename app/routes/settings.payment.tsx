@@ -291,7 +291,7 @@ export default function PaymentSettingsPage({ loaderData }: Route.ComponentProps
               const qrImage = qrImages[provider];
 
               return (
-                <div key={provider} className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+                <div key={provider} className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <QrCode className={`w-4 h-4 text-${color}-500`} />
