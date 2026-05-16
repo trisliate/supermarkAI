@@ -1123,7 +1123,7 @@ export async function processQuery(input: string, user?: AuthUser, history?: Cha
   }
 
   // Fallback to keyword matching
-  return processWithKeywords(input);
+  return processWithKeywords(input, user);
 }
 
 export async function executeConfirmedTool(toolName: string, toolArgs: Record<string, unknown>, user?: AuthUser): Promise<AssistantResponse> {
@@ -1265,11 +1265,13 @@ async function processWithLLM(config: AIConfig, input: string, user?: AuthUser, 
 }
 
 // Keyword matching fallback (original logic)
-async function processWithKeywords(input: string): Promise<AssistantResponse> {
+async function processWithKeywords(input: string, user?: AuthUser): Promise<AssistantResponse> {
   const q = input.trim().toLowerCase();
 
-  // Sell/create sale order (keyword fallback)
-  if (q.includes("卖") && (q.includes("个") || q.includes("袋") || q.includes("瓶") || q.includes("箱") || q.includes("包") || q.includes("件") || q.match(/\d+/))) {
+  // Sell/create sale order (keyword fallback) - role check
+  if (user && user.role !== "admin" && user.role !== "cashier") {
+    // Block non-cashier/non-admin from selling
+  } else if (q.includes("卖") && (q.includes("个") || q.includes("袋") || q.includes("瓶") || q.includes("箱") || q.includes("包") || q.includes("件") || q.match(/\d+/))) {
     // Extract quantity and product name
     const sellMatch = q.match(/(?:帮我)?(?:卖|卖出|销售)(?:了?)(\d+)?\s*(?:个|袋|瓶|箱|包|件|桶|罐)?(.+)/);
     if (sellMatch) {
@@ -1426,6 +1428,55 @@ async function processWithKeywords(input: string): Promise<AssistantResponse> {
     const count = await db.product.count({ where: { status: "active" } });
     const catCount = await db.category.count();
     return { type: "text", title: "商品查询", content: `当前共有 ${count} 个活跃商品，分布在 ${catCount} 个分类中。` };
+  }
+
+  // User list (admin only)
+  if (user?.role === "admin" && q.includes("用户") && (q.includes("列表") || q.includes("查看") || q.includes("所有") || q.includes("多少"))) {
+    const users = await db.user.findMany({ select: { name: true, username: true, role: true } });
+    const roleLabels: Record<string, string> = { admin: "管理员", purchaser: "采购员", inventory_keeper: "库管员", cashier: "收银员" };
+    return {
+      type: "table", title: "用户列表",
+      content: `共有 ${users.length} 个用户：`,
+      data: users.map((u) => ({ 姓名: u.name, 用户名: u.username, 角色: roleLabels[u.role] || u.role })),
+    };
+  }
+
+  // Product detail by name
+  if (q.includes("详情") || q.includes("详细信息")) {
+    const nameMatch = q.replace(/的?(详情|详细信息|商品详情|信息)/g, "").trim();
+    if (nameMatch) {
+      const product = await db.product.findFirst({
+        where: { name: { contains: nameMatch }, status: "active" },
+        include: { category: true, inventory: true },
+      });
+      if (product) {
+        const stock = product.inventory?.quantity ?? 0;
+        return {
+          type: "text", title: `${product.name} 详情`,
+          content: `分类：${product.category.name}\n价格：¥${formatPrice(Number(product.price))}/${product.unit}\n库存：${stock} ${product.unit}\n状态：${product.status === "active" ? "上架" : "下架"}${product.description ? `\n描述：${product.description}` : ""}`,
+        };
+      }
+    }
+  }
+
+  // Navigation keywords (优先于库存查询)
+  if (q.includes("去") || q.includes("打开") || q.includes("看看") || q.includes("跳转")) {
+    const navMap: Record<string, { page: string; name: string }> = {
+      "库存": { page: "/inventory", name: "库存管理" },
+      "商品": { page: "/products", name: "商品管理" },
+      "销售": { page: "/sales", name: "销售管理" },
+      "采购": { page: "/purchases", name: "采购管理" },
+      "供应商": { page: "/suppliers", name: "供应商管理" },
+      "仪表盘": { page: "/dashboard", name: "仪表盘" },
+      "用户": { page: "/users", name: "用户管理" },
+      "分类": { page: "/categories", name: "分类管理" },
+      "设置": { page: "/settings/ai", name: "系统设置" },
+    };
+    for (const [keyword, target] of Object.entries(navMap)) {
+      if (q.includes(keyword)) {
+        return { type: "navigate", title: "导航", content: `正在前往${target.name}...`, navigateTo: target.page };
+      }
+    }
   }
 
   if (q.includes("库存") || q.includes("还有多少") || q.includes("剩")) {

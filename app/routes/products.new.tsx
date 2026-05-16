@@ -16,7 +16,7 @@ import { FormSection } from "~/components/ui/form-section";
 import { flashRedirect } from "~/lib/flash.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireRole(request, ["admin"]);
+  const user = await requireRole(request, ["admin", "purchaser"]);
   const { loadRoutePermissions } = await import("~/lib/permissions.server");
   const routePermissions = await loadRoutePermissions();
   const categories = await db.category.findMany({ orderBy: { name: "asc" } });
@@ -24,7 +24,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  await requireRole(request, ["admin"]);
+  await requireRole(request, ["admin", "purchaser"]);
   const formData = await request.formData();
   const name = formData.get("name") as string;
   const categoryId = Number(formData.get("categoryId"));

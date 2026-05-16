@@ -20,7 +20,7 @@ export const ROUTE_CONFIGS: RouteConfig[] = [
   { route: "/sales", label: "销售管理", group: "销售", defaultRoles: ["admin", "cashier"], icon: "Receipt", sortOrder: 60 },
   { route: "/sales/new", label: "收银台", group: "销售", defaultRoles: ["admin", "cashier"], icon: "Store", sortOrder: 70 },
   { route: "/users", label: "用户管理", group: "系统", defaultRoles: ["admin"], icon: "Users", sortOrder: 80 },
-  { route: "/notifications", label: "通知管理", group: "系统", defaultRoles: ["admin"], icon: "Bell", sortOrder: 90 },
+  { route: "/notifications", label: "通知管理", group: "系统", defaultRoles: ["admin", "purchaser", "inventory_keeper", "cashier"], icon: "Bell", sortOrder: 90 },
   { route: "/settings/ai", label: "API Key", group: "系统", defaultRoles: ["admin"], icon: "KeyRound", sortOrder: 100 },
   { route: "/settings/payment", label: "支付配置", group: "系统", defaultRoles: ["admin"], icon: "CreditCard", sortOrder: 110 },
   { route: "/settings/permissions", label: "权限配置", group: "系统", defaultRoles: ["admin"], icon: "ShieldCheck", sortOrder: 120 },

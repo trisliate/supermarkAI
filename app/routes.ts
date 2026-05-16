@@ -10,6 +10,7 @@ export default [
   route("users/:id/edit", "routes/users.$id.edit.tsx"),
   route("products", "routes/products.tsx"),
   route("products/new", "routes/products.new.tsx"),
+  route("products/:id", "routes/products.$id.tsx"),
   route("products/:id/edit", "routes/products.$id.edit.tsx"),
   route("categories", "routes/categories.tsx"),
   route("suppliers", "routes/suppliers.tsx"),

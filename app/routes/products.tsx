@@ -1,4 +1,4 @@
-import { useFetcher, useNavigation } from "react-router";
+import { Link, useFetcher, useNavigation } from "react-router";
 import { useState, useEffect, useMemo } from "react";
 import type { Route } from "./+types/products";
 import { requireRole } from "~/lib/auth.server";
@@ -308,7 +308,9 @@ export default function ProductsPage({ loaderData }: Route.ComponentProps) {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <Link to={`/products/${p.id}`} className="hover:text-primary hover:underline">{p.name}</Link>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-normal text-xs">{p.category.name}</Badge>
                         </TableCell>

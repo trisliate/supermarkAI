@@ -40,7 +40,7 @@ const roleOptions = [
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireRole(request, ["admin"]);
+  const user = await requireRole(request, ["admin", "purchaser", "inventory_keeper", "cashier"]);
   const { loadRoutePermissions } = await import("~/lib/permissions.server");
   const routePermissions = await loadRoutePermissions();
   const notifications = await db.notification.findMany({

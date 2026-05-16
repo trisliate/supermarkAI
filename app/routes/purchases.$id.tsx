@@ -126,6 +126,15 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
     <AppLayout user={user} routePermissions={loaderData.routePermissions} backTo="/purchases" backLabel="返回采购列表" description="采购单详情">
       <div className="max-w-4xl animate-fade-in">
 
+        {/* Terminal status banner */}
+        {["cancelled", "rejected"].includes(purchase.status) && (
+          <div className={`mb-6 rounded-xl border p-4 text-center ${purchase.status === "rejected" ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800/50" : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"}`}>
+            <p className={`text-sm font-medium ${purchase.status === "rejected" ? "text-red-600 dark:text-red-400" : "text-slate-500"}`}>
+              {purchase.status === "rejected" ? "该采购单已被驳回" : "该采购单已取消"}
+            </p>
+          </div>
+        )}
+
         {/* Status Flow Bar */}
         {["pending", "approved", "received"].includes(purchase.status) && (
           <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5">
@@ -181,6 +190,8 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="text-muted-foreground">供应商：</span>{purchase.supplier.name}</div>
               <div><span className="text-muted-foreground">采购员：</span>{purchase.user.name}</div>
+              {purchase.supplier.contact && <div><span className="text-muted-foreground">联系人：</span>{purchase.supplier.contact}</div>}
+              {purchase.supplier.phone && <div><span className="text-muted-foreground">电话：</span>{purchase.supplier.phone}</div>}
               <div><span className="text-muted-foreground">总金额：</span><span className="font-semibold">¥{formatPrice(Number(purchase.totalAmount))}</span></div>
               <div><span className="text-muted-foreground">创建时间：</span>{new Date(purchase.createdAt).toLocaleString()}</div>
               {purchase.remark && <div className="col-span-2"><span className="text-muted-foreground">备注：</span>{purchase.remark}</div>}
@@ -213,6 +224,12 @@ export default function PurchaseDetailPage({ loaderData }: Route.ComponentProps)
                     <TableCell className="text-right font-medium">¥{formatPrice(item.quantity * Number(item.unitPrice))}</TableCell>
                   </TableRow>
                 ))}
+                <TableRow>
+                  <TableCell className="text-right font-semibold">合计（{purchase.items.length} 种商品）</TableCell>
+                  <TableCell className="text-right font-semibold">{purchase.items.reduce((s, i) => s + i.quantity, 0)}</TableCell>
+                  <TableCell />
+                  <TableCell className="text-right font-bold text-base">¥{formatPrice(purchase.totalAmount)}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>

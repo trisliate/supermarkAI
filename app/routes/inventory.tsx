@@ -1,4 +1,4 @@
-import { Link, useFetcher, useNavigation, useRevalidator } from "react-router";
+import { Link, useFetcher, useNavigation, useRevalidator, useSearchParams } from "react-router";
 import { useState, useMemo, useEffect } from "react";
 import type { Route } from "./+types/inventory";
 import { requireRole } from "~/lib/auth.server";
@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { PageSkeleton } from "~/components/ui/page-skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "~/components/ui/sheet";
-import { Settings, Warehouse, History, Package, DollarSign, AlertTriangle, Loader2, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Settings, Warehouse, History, Package, DollarSign, AlertTriangle, Loader2, ArrowDownToLine, ArrowUpFromLine, Search, X } from "lucide-react";
 import { DataTablePagination } from "~/components/ui/data-table-pagination";
 import { PAGE_SIZE } from "~/lib/constants";
 import { toast } from "sonner";
@@ -28,9 +28,17 @@ export async function loader({ request }: Route.LoaderArgs) {
   const routePermissions = await loadRoutePermissions();
   const url = new URL(request.url);
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+  const q = url.searchParams.get("q") || "";
+
+  const where: any = {};
+  if (q) {
+    where.product = { name: { contains: q } };
+  }
+
   const [total, inventories] = await Promise.all([
-    db.inventory.count(),
+    db.inventory.count({ where }),
     db.inventory.findMany({
+      where,
       include: { product: { include: { category: true } } },
       orderBy: { quantity: "asc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -41,12 +49,14 @@ export async function loader({ request }: Route.LoaderArgs) {
     ...inv,
     product: { ...inv.product, price: Number(inv.product.price) },
   }));
-  return { user, inventories: serializedInventories, total, page, pageSize: PAGE_SIZE, routePermissions };
+  return { user, inventories: serializedInventories, total, page, pageSize: PAGE_SIZE, q, routePermissions };
 }
 
 export default function InventoryPage({ loaderData }: Route.ComponentProps) {
-  const { user, inventories, total, page, pageSize } = loaderData;
+  const { user, inventories, total, page, pageSize, q } = loaderData;
   const [filter, setFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchValue, setSearchValue] = useState(q);
   const navigation = useNavigation();
   const isLoading = navigation.state === "loading" && navigation.location?.pathname === "/inventory";
   const revalidator = useRevalidator();
@@ -135,8 +145,40 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-        {/* Filter tabs + Action */}
+        {/* Search + Filter tabs + Action */}
         <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索商品..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const params = new URLSearchParams(searchParams);
+                  if (searchValue) params.set("q", searchValue);
+                  else params.delete("q");
+                  params.delete("page");
+                  setSearchParams(params);
+                }
+              }}
+              className="pl-9 h-9 w-52"
+            />
+            {q && (
+              <button
+                onClick={() => {
+                  setSearchValue("");
+                  const params = new URLSearchParams(searchParams);
+                  params.delete("q");
+                  params.delete("page");
+                  setSearchParams(params);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList>
               <TabsTrigger value="all">全部 ({counts.all})</TabsTrigger>
@@ -172,7 +214,7 @@ export default function InventoryPage({ loaderData }: Route.ComponentProps) {
                   <TableRow>
                     <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                       <Warehouse className="size-8 mx-auto mb-2 opacity-50" />
-                      暂无库存数据
+                      {q ? `没有找到包含"${q}"的商品` : "暂无库存数据"}
                     </TableCell>
                   </TableRow>
                 ) : (

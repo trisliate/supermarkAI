@@ -7,6 +7,7 @@ import { AppLayout } from "~/components/layout/app-layout";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import { formatPrice } from "~/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { ConfirmDialog } from "~/components/ui/confirm-dialog";
@@ -19,11 +20,11 @@ const paymentLabels: Record<string, { label: string; icon: typeof Banknote; colo
   alipay: { label: "支付宝", icon: CreditCard, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-400" },
 };
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  paid: { label: "已支付", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400" },
-  pending: { label: "待支付", color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400" },
-  failed: { label: "失败", color: "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400" },
-  refunded: { label: "已退款", color: "text-slate-600 bg-slate-50 dark:bg-slate-950/30 dark:text-slate-400" },
+const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  paid: { label: "已支付", variant: "default" },
+  pending: { label: "待支付", variant: "outline" },
+  failed: { label: "已取消", variant: "destructive" },
+  refunded: { label: "已退款", variant: "secondary" },
 };
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -175,13 +176,19 @@ export default function SaleDetailPage({ loaderData }: Route.ComponentProps) {
           </div>
         )}
 
+        {sale.paymentStatus === "failed" && (
+          <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 p-4 text-center">
+            <p className="text-sm text-slate-500 font-medium">该订单已取消</p>
+          </div>
+        )}
+
         {/* Order info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Receipt className="size-4" />
               SO-{String(sale.id).padStart(4, "0")}
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
+              <Badge variant={st.variant}>{st.label}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -248,7 +255,9 @@ export default function SaleDetailPage({ loaderData }: Route.ComponentProps) {
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={3} className="text-right font-semibold">合计</TableCell>
+                  <TableCell className="text-right font-semibold">合计（{sale.items.length} 种商品）</TableCell>
+                  <TableCell className="text-right font-semibold">{sale.items.reduce((s, i) => s + i.quantity, 0)}</TableCell>
+                  <TableCell />
                   <TableCell className="text-right font-bold text-base">¥{formatPrice(sale.totalAmount)}</TableCell>
                 </TableRow>
               </TableBody>

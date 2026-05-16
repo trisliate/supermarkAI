@@ -30,19 +30,19 @@ async function main() {
   const users = await Promise.all([
     prisma.user.upsert({ where: { username: "admin" }, update: {}, create: { username: "admin", password: adminPwd, name: "王店长", role: Role.admin } }),
     prisma.user.upsert({ where: { username: "admin2" }, update: {}, create: { username: "admin2", password: userPwd, name: "陈副店", role: Role.admin } }),
-    prisma.user.upsert({ where: { username: "purchaser1" }, update: {}, create: { username: "purchaser1", password: userPwd, name: "张采购", role: Role.purchaser } }),
+    prisma.user.upsert({ where: { username: "purchaser" }, update: {}, create: { username: "purchaser", password: userPwd, name: "张采购", role: Role.purchaser } }),
     prisma.user.upsert({ where: { username: "purchaser2" }, update: {}, create: { username: "purchaser2", password: userPwd, name: "刘采购", role: Role.purchaser } }),
-    prisma.user.upsert({ where: { username: "keeper1" }, update: {}, create: { username: "keeper1", password: userPwd, name: "李理货", role: Role.inventory_keeper } }),
+    prisma.user.upsert({ where: { username: "keeper" }, update: {}, create: { username: "keeper", password: userPwd, name: "李理货", role: Role.inventory_keeper } }),
     prisma.user.upsert({ where: { username: "keeper2" }, update: {}, create: { username: "keeper2", password: userPwd, name: "赵理货", role: Role.inventory_keeper } }),
-    prisma.user.upsert({ where: { username: "cashier1" }, update: {}, create: { username: "cashier1", password: userPwd, name: "王收银", role: Role.cashier } }),
+    prisma.user.upsert({ where: { username: "cashier" }, update: {}, create: { username: "cashier", password: userPwd, name: "王收银", role: Role.cashier } }),
     prisma.user.upsert({ where: { username: "cashier2" }, update: {}, create: { username: "cashier2", password: userPwd, name: "孙收银", role: Role.cashier } }),
   ]);
 
   const admin = users[0];
-  const purchaser1 = users[2];
+  const purchaser = users[2];
   const purchaser2 = users[3];
-  const keeper1 = users[4];
-  const cashier1 = users[6];
+  const keeper = users[4];
+  const cashier = users[6];
   const cashier2 = users[7];
 
   console.log(`  ✅ 用户: ${users.length} 人`);
@@ -220,7 +220,7 @@ async function main() {
   // 供应商: 0统一食品 1可口可乐 2日用品批发 3零食天地 4新鲜果蔬 5调味品总经销
   const purchaseOrders = [
     // pending（待审批）- 3笔
-    { supplier: 4, user: purchaser1, status: PurchaseStatus.pending, daysAgo: 0, items: [
+    { supplier: 4, user: purchaser, status: PurchaseStatus.pending, daysAgo: 0, items: [
       { prodIdx: 24, qty: 80, price: 1.80 },   // 大白菜(缺货)
       { prodIdx: 25, qty: 60, price: 3.00 },   // 西红柿
     ]},
@@ -234,12 +234,12 @@ async function main() {
       { prodIdx: 17, qty: 30, price: 10.00 },  // 好丽友
       { prodIdx: 18, qty: 40, price: 12.00 },  // 德芙
     ]},
-    { supplier: 5, user: purchaser1, status: PurchaseStatus.pending, daysAgo: 1, items: [
+    { supplier: 5, user: purchaser, status: PurchaseStatus.pending, daysAgo: 1, items: [
       { prodIdx: 28, qty: 60, price: 7.00 },   // 老干妈
       { prodIdx: 27, qty: 40, price: 7.50 },   // 海天酱油
     ]},
     // approved（已审批）- 2笔
-    { supplier: 0, user: purchaser1, status: PurchaseStatus.approved, daysAgo: 1, items: [
+    { supplier: 0, user: purchaser, status: PurchaseStatus.approved, daysAgo: 1, items: [
       { prodIdx: 0, qty: 200, price: 3.20 },   // 康师傅
       { prodIdx: 1, qty: 150, price: 3.20 },   // 统一
       { prodIdx: 3, qty: 100, price: 4.50 },   // 达利园
@@ -250,7 +250,7 @@ async function main() {
       { prodIdx: 25, qty: 60, price: 3.00 },   // 西红柿
     ]},
     // received（已入库）- 5笔
-    { supplier: 1, user: purchaser1, status: PurchaseStatus.received, daysAgo: 3, items: [
+    { supplier: 1, user: purchaser, status: PurchaseStatus.received, daysAgo: 3, items: [
       { prodIdx: 6, qty: 200, price: 2.00 },   // 可口可乐
       { prodIdx: 8, qty: 100, price: 3.80 },   // 元气森林
     ]},
@@ -259,7 +259,7 @@ async function main() {
       { prodIdx: 13, qty: 100, price: 9.00 },  // 维达
       { prodIdx: 14, qty: 80, price: 5.50 },   // 垃圾袋
     ]},
-    { supplier: 0, user: purchaser1, status: PurchaseStatus.received, daysAgo: 5, items: [
+    { supplier: 0, user: purchaser, status: PurchaseStatus.received, daysAgo: 5, items: [
       { prodIdx: 2, qty: 80, price: 6.00 },    // 旺仔小馒头
       { prodIdx: 3, qty: 60, price: 4.50 },    // 达利园
     ]},
@@ -267,7 +267,7 @@ async function main() {
       { prodIdx: 19, qty: 50, price: 22.00 },  // 三只松鼠
       { prodIdx: 16, qty: 80, price: 7.50 },   // 乐事
     ]},
-    { supplier: 5, user: purchaser1, status: PurchaseStatus.received, daysAgo: 6, items: [
+    { supplier: 5, user: purchaser, status: PurchaseStatus.received, daysAgo: 6, items: [
       { prodIdx: 29, qty: 40, price: 5.50 },   // 恒顺香醋
       { prodIdx: 31, qty: 60, price: 4.00 },   // 舒肤佳
       { prodIdx: 33, qty: 30, price: 9.00 },   // 高露洁
@@ -276,7 +276,7 @@ async function main() {
     { supplier: 4, user: purchaser2, status: PurchaseStatus.cancelled, daysAgo: 3, items: [
       { prodIdx: 22, qty: 200, price: 5.00 },  // 苹果(取消)
     ]},
-    { supplier: 1, user: purchaser1, status: PurchaseStatus.cancelled, daysAgo: 4, items: [
+    { supplier: 1, user: purchaser, status: PurchaseStatus.cancelled, daysAgo: 4, items: [
       { prodIdx: 9, qty: 100, price: 2.50 },   // 王老吉(取消)
     ]},
   ];
@@ -366,7 +366,7 @@ async function main() {
     [[0, 2], [1, 1], [10, 2], [4, 2]],                // 食品+饮料组合
   ];
 
-  const cashiers = [cashier1, cashier2];
+  const cashiers = [cashier, cashier2];
 
   // 每笔订单对应的天数偏移 (0=今天, 1=昨天, ..., 6=7天前)
   const dayOffsets = [
@@ -409,28 +409,28 @@ async function main() {
   // ==================== 库存日志（20条）====================
   const logEntries = [
     // 入库记录
-    { prodIdx: 0, type: "IN" as const, qty: 200, reason: "采购入库 PO-0004", userId: keeper1.id, daysAgo: 5 },
-    { prodIdx: 6, type: "IN" as const, qty: 200, reason: "采购入库 PO-0006", userId: keeper1.id, daysAgo: 3 },
-    { prodIdx: 12, type: "IN" as const, qty: 50, reason: "采购入库 PO-0007", userId: keeper1.id, daysAgo: 4 },
-    { prodIdx: 19, type: "IN" as const, qty: 50, reason: "采购入库 PO-0009", userId: keeper1.id, daysAgo: 5 },
-    { prodIdx: 13, type: "IN" as const, qty: 100, reason: "采购入库 PO-0007", userId: keeper1.id, daysAgo: 4 },
-    { prodIdx: 27, type: "IN" as const, qty: 60, reason: "采购入库 PO-0010", userId: keeper1.id, daysAgo: 6 },
-    { prodIdx: 31, type: "IN" as const, qty: 40, reason: "采购入库 PO-0010", userId: keeper1.id, daysAgo: 6 },
+    { prodIdx: 0, type: "IN" as const, qty: 200, reason: "采购入库 PO-0004", userId: keeper.id, daysAgo: 5 },
+    { prodIdx: 6, type: "IN" as const, qty: 200, reason: "采购入库 PO-0006", userId: keeper.id, daysAgo: 3 },
+    { prodIdx: 12, type: "IN" as const, qty: 50, reason: "采购入库 PO-0007", userId: keeper.id, daysAgo: 4 },
+    { prodIdx: 19, type: "IN" as const, qty: 50, reason: "采购入库 PO-0009", userId: keeper.id, daysAgo: 5 },
+    { prodIdx: 13, type: "IN" as const, qty: 100, reason: "采购入库 PO-0007", userId: keeper.id, daysAgo: 4 },
+    { prodIdx: 27, type: "IN" as const, qty: 60, reason: "采购入库 PO-0010", userId: keeper.id, daysAgo: 6 },
+    { prodIdx: 31, type: "IN" as const, qty: 40, reason: "采购入库 PO-0010", userId: keeper.id, daysAgo: 6 },
     // 出库记录
-    { prodIdx: 16, type: "OUT" as const, qty: 15, reason: "销售出库", userId: cashier1.id, daysAgo: 6 },
+    { prodIdx: 16, type: "OUT" as const, qty: 15, reason: "销售出库", userId: cashier.id, daysAgo: 6 },
     { prodIdx: 6, type: "OUT" as const, qty: 10, reason: "销售出库", userId: cashier2.id, daysAgo: 5 },
-    { prodIdx: 22, type: "OUT" as const, qty: 8, reason: "销售出库", userId: cashier1.id, daysAgo: 4 },
+    { prodIdx: 22, type: "OUT" as const, qty: 8, reason: "销售出库", userId: cashier.id, daysAgo: 4 },
     { prodIdx: 0, type: "OUT" as const, qty: 5, reason: "销售出库", userId: cashier2.id, daysAgo: 3 },
-    { prodIdx: 8, type: "OUT" as const, qty: 12, reason: "销售出库", userId: cashier1.id, daysAgo: 2 },
+    { prodIdx: 8, type: "OUT" as const, qty: 12, reason: "销售出库", userId: cashier.id, daysAgo: 2 },
     { prodIdx: 18, type: "OUT" as const, qty: 6, reason: "销售出库", userId: cashier2.id, daysAgo: 1 },
-    { prodIdx: 10, type: "OUT" as const, qty: 8, reason: "销售出库", userId: cashier1.id, daysAgo: 1 },
+    { prodIdx: 10, type: "OUT" as const, qty: 8, reason: "销售出库", userId: cashier.id, daysAgo: 1 },
     { prodIdx: 4, type: "OUT" as const, qty: 10, reason: "销售出库", userId: cashier2.id, daysAgo: 0 },
     // 盘点调整
-    { prodIdx: 2, type: "OUT" as const, qty: 20, reason: "盘点损耗：过期报废", userId: keeper1.id, daysAgo: 2 },
-    { prodIdx: 7, type: "OUT" as const, qty: 50, reason: "盘点差异：库存清零", userId: keeper1.id, daysAgo: 1 },
-    { prodIdx: 24, type: "OUT" as const, qty: 30, reason: "盘点差异：库存清零", userId: keeper1.id, daysAgo: 1 },
-    { prodIdx: 15, type: "OUT" as const, qty: 15, reason: "盘点损耗：电池漏液", userId: keeper1.id, daysAgo: 3 },
-    { prodIdx: 25, type: "IN" as const, qty: 50, reason: "紧急补货入库", userId: keeper1.id, daysAgo: 0 },
+    { prodIdx: 2, type: "OUT" as const, qty: 20, reason: "盘点损耗：过期报废", userId: keeper.id, daysAgo: 2 },
+    { prodIdx: 7, type: "OUT" as const, qty: 50, reason: "盘点差异：库存清零", userId: keeper.id, daysAgo: 1 },
+    { prodIdx: 24, type: "OUT" as const, qty: 30, reason: "盘点差异：库存清零", userId: keeper.id, daysAgo: 1 },
+    { prodIdx: 15, type: "OUT" as const, qty: 15, reason: "盘点损耗：电池漏液", userId: keeper.id, daysAgo: 3 },
+    { prodIdx: 25, type: "IN" as const, qty: 50, reason: "紧急补货入库", userId: keeper.id, daysAgo: 0 },
   ];
 
   for (const log of logEntries) {
@@ -451,7 +451,7 @@ async function main() {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("  店长: admin / admin123");
   console.log("  其他用户: xxx / 123456");
-  console.log("  用户列表: admin2, purchaser1, purchaser2, keeper1, keeper2, cashier1, cashier2");
+  console.log("  用户列表: admin2, purchaser, purchaser2, keeper, keeper2, cashier, cashier2");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 }
 

@@ -94,7 +94,7 @@ export function AppSidebar({ user, routePermissions }: AppSidebarProps) {
     <ShadSidebar
       variant="sidebar"
       collapsible="icon"
-      className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
+      className="bg-card dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800"
     >
       <SidebarHeader className="border-b border-slate-200/60 dark:border-slate-700/60 p-0 h-14 flex flex-row items-center overflow-hidden">
         <div className="pl-[6px] w-full flex items-center gap-3 group-data-[collapsible=icon]:pr-0">

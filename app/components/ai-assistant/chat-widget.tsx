@@ -532,7 +532,7 @@ export function ChatWidget({ isOpen, onOpen, onClose, user }: ChatWidgetProps) {
       {/* Chat window */}
       {isOpen && !isMinimized && (
         <div
-          className="fixed bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex z-50 overflow-hidden"
+          className="fixed bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex z-50 overflow-hidden"
           style={{ left: pos.x, top: pos.y, width: sidebarOpen ? size.w + 260 : size.w, height: size.h }}
         >
           {/* Sidebar */}
